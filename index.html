@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monday Meeting</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F3F4F6; margin:0; }
+.sidebar { width: 56px; min-height: 100vh; background: white; border-right: 1px solid #E5E7EB; position: fixed; left: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding: 12px 6px; z-index: 20; }
+.nav-item { width: 40px; height: 40px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #6B7280; font-size: 8px; gap: 2px; transition: all 0.15s; margin-bottom: 2px; }
+.nav-item:hover { background: #F3F4F6; }
+.nav-item.active { background: #EDE9FE; color: #7C3AED; }
+.nav-item svg { width: 16px; height: 16px; }
+.main-content { margin-left: 56px; }
+.topbar { background: white; border-bottom: 1px solid #E5E7EB; padding: 12px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+.card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px; }
+.pbar-bg { background: #E5E7EB; border-radius: 4px; height: 6px; overflow: hidden; }
+.pbar-fill { height: 100%; border-radius: 4px; }
+.badge { padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; display:inline-block; }
+.badge-orange { background: #FEF3C7; color: #D97706; }
+.badge-green  { background: #D1FAE5; color: #059669; }
+.badge-red    { background: #FEE2E2; color: #DC2626; }
+.pill { padding: 5px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.pill.active { background: #7C3AED; color: white; }
+.pill:not(.active) { color: #6B7280; }
+.pill:not(.active):hover { background: #F3F4F6; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 50; display: flex; align-items: center; justify-content: center; }
+.ttable th { font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; padding: 10px 12px; background: #F9FAFB; text-align: left; }
+.ttable td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; color: #374151; }
+.ttable tr:hover td { background: #FAFAFA; cursor: pointer; }
+.oinput { border: 1px solid #E5E7EB; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 100%; outline: none; }
+.oinput:focus { border-color: #7C3AED; }
+.chk { width: 16px; height: 16px; border: 2px solid #D1D5DB; border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.chk.on { background: #7C3AED; border-color: #7C3AED; }
+.avatar { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div style="width:32px;height:32px;background:#7C3AED;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;margin-bottom:20px;flex-shrink:0">R</div>
+  <div id="nav-menu" style="display:flex;flex-direction:column;align-items:center;width:100%"></div>
+  <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:4px;padding-bottom:8px">
+    <div style="width:32px;height:32px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700">R</div>
+    <span style="font-size:11px;font-weight:600;color:#374151">Romain</span>
+    
+  </div>
+</div>
+
+<div class="main-content">
+  <div class="topbar">
+    <span style="font-weight:700;font-size:15px;color:#111827">Monday Meeting</span>
+    <div style="display:flex;align-items:center;gap:6px;background:#F3F4F6;border-radius:8px;padding:6px 12px;font-size:13px;color:#6B7280">
+      <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span id="top-date"></span>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+      <span id="data-status" style="font-size:12px;color:#9CA3AF"></span>
+      <button onclick="showTeam()" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#374151;border:1px solid #E5E7EB;padding:6px 14px;border-radius:8px;background:white;cursor:pointer">
+        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Vue equipe
+      </button>
+      <button onclick="window.print()" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#374151;border:1px solid #E5E7EB;padding:6px 14px;border-radius:8px;background:white;cursor:pointer">Exporter</button>
+    </div>
+  </div>
+
+  <div style="padding:24px;max-width:900px;margin:0 auto">
+    <div id="view">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div id="pills" style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;max-width:calc(100% - 120px);padding-bottom:2px"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <button onclick="prevC()" style="width:32px;height:32px;border-radius:50%;background:none;border:1px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280">&#8592;</button>
+          <span id="counter" style="font-size:13px;color:#9CA3AF"></span>
+          <button onclick="nextC()" style="width:32px;height:32px;border-radius:50%;background:none;border:1px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280">&#8594;</button>
+        </div>
+      </div>
+      <div id="card"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Team modal -->
+<div id="team-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeTeam()">
+  <div style="background:white;border-radius:16px;width:100%;max-width:900px;margin:16px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="padding:20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <h2 style="font-weight:700;font-size:16px;color:#111827;margin:0">Vue equipe</h2>
+      <button onclick="closeTeam()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#9CA3AF">x</button>
+    </div>
+    <div style="overflow:auto">
+      <table class="ttable" style="width:100%;border-collapse:collapse"><thead><tr id="team-head"></tr></thead><tbody id="team-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Objectives modal -->
+<div id="obj-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeObj()">
+  <div style="background:white;border-radius:16px;width:100%;max-width:480px;margin:16px">
+    <div style="padding:20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between">
+      <div><h2 style="font-weight:700;font-size:16px;color:#111827;margin:0">Objectifs personnalises</h2><p id="obj-name" style="font-size:13px;color:#9CA3AF;margin:4px 0 0"></p></div>
+      <button onclick="closeObj()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#9CA3AF">x</button>
+    </div>
+    <div style="padding:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div><label style="font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Objectif CA (euros)</label><input type="number" id="oi-ca" class="oinput" placeholder="30000"></div>
+        <div><label style="font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px">Objectif Deals</label><input type="number" id="oi-deals" class="oinput" placeholder="3"></div>
+      </div>
+      <div style="border-top:1px solid #F3F4F6;padding-top:16px;display:flex;align-items:center;justify-content:space-between">
+        <button onclick="resetObj()" style="background:none;border:none;font-size:13px;color:#9CA3AF;cursor:pointer">Reinitialiser</button>
+        <button onclick="saveObj()" style="background:#7C3AED;color:white;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// DATA
+var DATA_SUMMARY = [
+  {name:"Boris DC",uid:"48693",nbJob:0,nbProcess:0,ulScore:0,firstItw:0,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Paris"},
+  {name:"Charlie Billebeau",uid:"48771",nbJob:4,nbProcess:5,ulScore:5,firstItw:0,meeting:0,callNA:2,callAb:3,deals:0,ca:0,sem:23,ulHistory:[7.5,6.8,8.2,6.3,7.5,6.9,5.8,7.0,5.5,6.5,5.3,5.2,6.1,7.1,4.9,5.0,6.1,6.9,5.7,5.0,6.6,3.6],team:"Lyon"},
+  {name:"Kim-Sian LIM",uid:"49038",nbJob:12,nbProcess:8,ulScore:10,firstItw:1,meeting:1,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[8.1,6.5,6.2,6.3,7.0,8.7,6.9,8.2,8.6,7.9,8.6,7.3,7.4,8.0,9.5,8.9,8.7,9.7,9.4,9.1,10.7,10.6],team:"Paris"},
+  {name:"Gautier Lescure",uid:"52237",nbJob:6,nbProcess:20,ulScore:16,firstItw:3,meeting:0,callNA:4,callAb:0,deals:1,ca:11600,sem:23,ulHistory:[9.2,10.5,10.6,12.0,11.8,10.8,13.2,10.9,12.0,13.3,11.8,13.1,12.0,14.2,14.8,14.5,15.7,14.3,15.7,15.7,16.0,15.9],team:"Paris"},
+  {name:"Pierre Coquet",uid:"52244",nbJob:12,nbProcess:7,ulScore:10.5,firstItw:2,meeting:0,callNA:8,callAb:3,deals:0,ca:0,sem:23,ulHistory:[10.0,10.4,9.1,9.7,8.0,10.0,9.9,11.0,10.5,9.0,9.4,10.3,8.4,9.8,9.0,8.9,8.8,11.0,9.2,9.6,10.1,11.6],team:"Briks"},
+  {name:"Martin Guerry",uid:"52245",nbJob:5,nbProcess:1,ulScore:10.5,firstItw:2,meeting:0,callNA:30,callAb:3,deals:0,ca:0,sem:23,ulHistory:[6.7,8.0,8.4,9.5,9.4,9.7,8.0,8.6,8.5,10.2,10.6,8.3,8.5,8.7,8.9,9.7,10.2,9.3,8.7,10.0,10.0,10.7],team:"Lyon"},
+  {name:"Cori Flacher",uid:"52257",nbJob:4,nbProcess:2,ulScore:10,firstItw:2,meeting:0,callNA:0,callAb:1,deals:0,ca:0,sem:23,ulHistory:[12.4,11.5,11.0,11.2,11.3,9.4,11.9,11.5,11.7,11.5,10.2,10.2,9.2,10.8,9.0,9.0,9.4,9.2,9.7,8.8,8.5,9.0],team:"Paris"},
+  {name:"Basile Lebourgeois",uid:"52269",nbJob:12,nbProcess:11,ulScore:27,firstItw:5,meeting:0,callNA:0,callAb:0,deals:1,ca:11000,sem:23,ulHistory:[16.8,18.0,17.4,20.4,20.1,19.1,19.8,20.5,21.0,20.7,23.3,24.2,23.0,23.5,22.8,23.2,24.4,24.6,26.7,25.1,25.1,28.4],team:"Bordeaux"},
+  {name:"Molka Besbes",uid:"52272",nbJob:10,nbProcess:10,ulScore:9,firstItw:2,meeting:0,callNA:11,callAb:5,deals:0,ca:0,sem:23,ulHistory:[7.1,6.0,7.3,5.9,7.5,8.9,8.7,8.3,7.0,7.5,7.0,8.9,8.2,9.1,7.8,7.6,9.5,10.1,9.8,9.7,9.9,9.7],team:"Lyon"},
+  {name:"Ayann Porta",uid:"52276",nbJob:6,nbProcess:11,ulScore:20,firstItw:4,meeting:0,callNA:2,callAb:0,deals:0,ca:0,sem:23,ulHistory:[13.2,14.3,14.1,13.4,13.7,14.8,15.0,16.6,17.7,16.4,18.2,18.6,18.8,17.3,17.2,17.5,17.7,18.0,19.5,20.6,20.7,19.9],team:"Paris"},
+  {name:"Michael DOMBAR",uid:"52285",nbJob:13,nbProcess:5,ulScore:12,firstItw:2,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[9.5,10.0,8.0,9.9,10.8,10.6,10.6,9.9,9.2,11.2,9.9,11.5,12.1,10.5,10.7,12.5,12.0,10.4,10.5,10.7,13.1,12.9],team:"Bordeaux"},
+  {name:"Maxime Schmitt",uid:"52319",nbJob:12,nbProcess:6,ulScore:10,firstItw:0,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[6.9,9.1,9.6,8.8,7.9,8.6,7.5,7.2,10.2,9.3,9.0,10.3,8.9,10.4,10.3,8.6,8.8,9.0,8.9,10.1,9.2,9.8],team:"Briks"},
+  {name:"Hugo Milcent",uid:"52339",nbJob:3,nbProcess:2,ulScore:15.5,firstItw:2,meeting:0,callNA:0,callAb:1,deals:0,ca:0,sem:23,ulHistory:[9.9,12.4,11.0,11.5,12.1,13.3,12.0,13.8,12.7,13.0,13.2,11.9,13.4,12.8,12.5,15.1,13.4,14.6,15.5,15.2,14.8,15.6],team:"Paris"},
+  {name:"Adem Mansouri",uid:"52349",nbJob:11,nbProcess:21,ulScore:22,firstItw:5,meeting:0,callNA:0,callAb:0,deals:1,ca:6000,sem:23,ulHistory:[15.2,16.2,14.5,16.2,15.6,16.0,17.8,17.4,17.9,18.8,19.6,18.5,19.3,19.3,19.7,20.6,20.2,20.8,20.9,22.7,22.3,23.1],team:"Paris"},
+  {name:"Baptiste Pin",uid:"75012",nbJob:11,nbProcess:8,ulScore:11,firstItw:1,meeting:0,callNA:1,callAb:0,deals:0,ca:0,sem:23,ulHistory:[10.3,8.4,9.4,10.6,10.4,8.4,8.4,9.5,8.5,9.1,8.7,10.6,11.0,11.4,9.3,11.1,11.0,9.5,11.9,12.2,10.1,12.4],team:"Lyon"},
+  {name:"Camille Bourgeois",uid:"85643",nbJob:8,nbProcess:4,ulScore:10,firstItw:1,meeting:0,callNA:38,callAb:6,deals:0,ca:0,sem:23,ulHistory:[7.7,8.1,9.7,9.3,7.4,8.3,8.6,8.2,7.8,8.3,9.6,7.6,9.3,9.1,7.9,8.9,9.9,9.7,8.4,11.3,10.8,11.4],team:"Lyon"},
+  {name:"Cyprien Bernard",uid:"90160",nbJob:5,nbProcess:8,ulScore:9,firstItw:2,meeting:1,callNA:40,callAb:3,deals:0,ca:0,sem:23,ulHistory:[5.8,6.4,5.8,8.1,6.7,6.4,7.3,8.9,8.7,7.1,6.9,9.3,8.4,8.8,7.1,7.1,9.1,8.4,7.4,10.1,9.3,9.9],team:"Bordeaux"},
+  {name:"Louane Cohard",uid:"120903",nbJob:0,nbProcess:0,ulScore:0,firstItw:0,meeting:0,callNA:57,callAb:12,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Lyon"},
+  {name:"Maissa Benneouala",uid:"120906",nbJob:4,nbProcess:1,ulScore:0,firstItw:0,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Briks"},
+  {name:"Achille Gosselain",uid:"125984",nbJob:7,nbProcess:8,ulScore:6.5,firstItw:1,meeting:0,callNA:40,callAb:15,deals:0,ca:0,sem:23,ulHistory:[3.8,6.1,3.8,6.3,5.1,4.9,5.6,6.8,4.9,4.5,5.8,5.0,4.7,4.9,4.7,5.2,5.6,5.6,7.1,5.7,6.4,5.5],team:"Paris"}
+];
+
+var DATA_JOBS = [
+  {uid:"52244",job:"Ingénieur stratégie Énergie & Carbone",client:"LHIRR",slug:"17805021141740052244PAr"},
+  {uid:"52319",job:"Chef de projet Menuiserie #4",client:"KERMAREC",slug:"17700394404100052319ide"},
+  {uid:"52319",job:"Chef de projet Retail",client:"Megawork",slug:"17761516967240052319OdY"},
+  {uid:"52269",job:"Senior Backend Engineer",client:"SecondBrain",slug:"17761717380940052269iEk"},
+  {uid:"52349",job:"Senior DevOps/Solution Engineer",client:"Tribun Health AI",slug:"17791080857850052349nPg"},
+  {uid:"49038",job:"Head of regulatory affairs",client:"HyLight",slug:"17775657547290048693TZc"},
+  {uid:"52276",job:"Développeur FullStack",client:"Eagr",slug:"17544917841480052276saV"},
+  {uid:"52237",job:"Software Engineer",client:"MakiPeople",slug:"17654585204870052237djP"},
+  {uid:"75012",job:"Développeur Hardware/IoT",client:"Linet",slug:"17760725184990075012EpD"},
+  {uid:"52257",job:"Full Stack Developer (TypeScript)",client:"Hipto/WEEDEV",slug:"17793744519900052257Sym"},
+  {uid:"52245",job:"Engineering manager",client:"Aptimiz",slug:"17791941751640052245eim"},
+  {uid:"52285",job:"Senior Backend (Python)",client:"Terabase Energy",slug:"17800607532230052285zDl"},
+  {uid:"52349",job:"DevSecOps",client:"Tribun Health AI",slug:"17778972178200052349QtB"},
+  {uid:"52269",job:"Senior Backend Engineer",client:"Byond/Kiro",slug:"17793811919030052269atU"},
+  {uid:"52237",job:"Engineering Manager",client:"MakiPeople",slug:"17773030669650052237FCr"},
+  {uid:"52276",job:"Product Owner - IKA",client:"IKA",slug:"17767897815690052276jIo"},
+  {uid:"125984",job:"Head of Sales / CRO",client:"Fleuret-AI",slug:"17768534293460125984lyw"},
+  {uid:"52272",job:"Fullstack go react",client:"Hublead",slug:"17803907552600052272MzV"},
+  {uid:"52244",job:"Responsable Commercial",client:"Getzner",slug:"17792810992440052244ZTU"},
+  {uid:"125984",job:"Software Engineer",client:"Fleuret-AI",slug:"17769393982610125984uPN"},
+  {uid:"52237",job:"Product Engineer",client:"Orus",slug:"17682964332650052237CST"},
+  {uid:"52276",job:"Développeur - Softnext",client:"SoftNext",slug:"17800424454460052276fJo"},
+  {uid:"52349",job:"QA Auto",client:"iziwork",slug:"17804266282820052349qpi"},
+  {uid:"52269",job:"Staff Engineer",client:"Dedalus",slug:"17800625318880052269Aag"},
+  {uid:"52285",job:"Data Engineer (3/5 ans)",client:"Terabase Energy",slug:"17749657106530052285FoO"},
+  {uid:"90160",job:"CPO",client:"DWS",slug:"17788364974340090160Etf"},
+  {uid:"49038",job:"PO",client:"CashNow",slug:"17738553898860049038uAy"},
+  {uid:"52339",job:"Business Developer",client:"Yumana",slug:"17798060894360052339NWC"},
+  {uid:"52244",job:"Chargé de travaux & gestion locative",client:"Month'immo",slug:"17774709426790052244iUC"},
+  {uid:"52349",job:"Senior/Lead Product Manager",client:"iziwork",slug:"17799986156740052349FeU"},
+  {uid:"75012",job:"Ingé Cloud AWS",client:"SEBIA",slug:"17797129388830075012xOm"},
+  {uid:"52269",job:"Sénior Data Scientist",client:"Byond/Kiro",slug:"17712359449780052269nwU"},
+  {uid:"52285",job:"Sr UX / Sr Product Designer",client:"Terabase Energy",slug:"17780590234240052285xHv"},
+  {uid:"52269",job:"Senior Product Designer",client:"Byond/Kiro",slug:"17712379194060052269KLb"},
+  {uid:"125984",job:"Vendeur moto",client:"RB SCOOTERS",slug:"17800691035150125984ilF"},
+  {uid:"90160",job:"Responsable de Domaine IT",client:"SEVETYS",slug:"17772950636830090160GrW"},
+  {uid:"52272",job:"Chef de projet ROC",client:"Tims",slug:"17779713039040052272Tdv"},
+  {uid:"52272",job:"Administrateur Systèmes et Réseaux",client:"Tims",slug:"17781642778750052272shC"},
+  {uid:"49038",job:"Fullstack Engineer",client:"ZELIQ",slug:"17751198635690049038SQr"},
+  {uid:"75012",job:"Care Specialist",client:"Kizeo",slug:"17781658661900075012BOb"},
+  {uid:"90160",job:"Data Engineer",client:"Ambos Energy",slug:"17767023023400090160qzw"},
+  {uid:"125984",job:"IA Engineer",client:"Fleuret-AI",slug:"17772761523500125984jop"},
+  {uid:"52285",job:"Senior Angular",client:"Terabase Energy",slug:"17603489398730052285UOk"},
+  {uid:"48773",job:"Lead Developer Python - IA & Outils Métiers",client:"Alcimed",slug:"17737595975130048773ZiW"},
+  {uid:"52349",job:"Senior Fullstack Java/Angular",client:"CBTW",slug:"17762463598580052349IfF"},
+  {uid:"52257",job:"Senior Full Stack Developer",client:"Hipto/WEEDEV",slug:"17792709218520052257xWI"},
+  {uid:"48771",job:"Chef de Projet Senior IA / DATA",client:"IODA Group",slug:"17781724760140048771tYU"},
+  {uid:"85643",job:"Business Developer / BDR",client:"Shizen",slug:"17768714087470085643Bfp"},
+  {uid:"48771",job:"Sales Senior",client:"On train - Tech, Data & AI training",slug:"17769375247040048771ZOC"},
+  {uid:"52269",job:"Software Engineer",client:"Byond/Kiro",slug:"17720119094070052269Fjy"},
+  {uid:"90160",job:"Développeur Fullstack .NET / Angular",client:"N2F",slug:"17712401120570090160MJX"},
+  {uid:"52349",job:"Software Engineer",client:"Spiko",slug:"17437469531400052349VfS"},
+  {uid:"75012",job:"Dev PHP Full Remote",client:"passbolt",slug:"17774702409340075012zhC"},
+  {uid:"125984",job:"Responsable des opérations UX",client:"Monnoyeur",slug:"17778970399570125984kPB"},
+  {uid:"75012",job:"Global Demand Planner",client:"SEBIA",slug:"17773708164940075012TAX"},
+  {uid:"52269",job:"Forward Deployed Engineer",client:"Oplit",slug:"17744268693360052269VUt"},
+  {uid:"52272",job:"Senior Backend Node.js",client:"365Talents",slug:"17769539325230052272EAY"},
+  {uid:"52319",job:"Chargé d'affaires TCE",client:"SPACING",slug:"17682965300770052319nxQ"},
+  {uid:"52272",job:"Expert GRC",client:"CBTW",slug:"17760951426200052272Gjd"},
+  {uid:"52237",job:"Ingénieur Commercial Corporama",client:"INTESCIA GROUP",slug:"17425537853440052237uEw"},
+  {uid:"49038",job:"Clinical & PMS Manager",client:"Macopharma",slug:"17737551562960049038sAj"},
+  {uid:"90160",job:"Program Portfolio Manager",client:"WILCO",slug:"17730555531380090160jpC"},
+  {uid:"49038",job:"Senior Embedded Software Engineer",client:"HyLight",slug:"17768490162310049038bRu"},
+  {uid:"52276",job:"Data Engineer IA - Renaissance",client:"RENAISSANCE",slug:"17756629750760052276jBl"},
+  {uid:"52276",job:"CTO - Jus Mundi",client:"Jus Mundi",slug:"17756432230760052276XJE"},
+  {uid:"120906",job:"Responsable Production",client:"Groupe Gohard",slug:"17731396326360120906NZp"},
+  {uid:"52272",job:"Tech Lead Java Angular",client:"CBTW",slug:"17760942844820052272QhV"},
+  {uid:"52237",job:"Ingénieur Commercial Edisys (BTP)",client:"INTESCIA GROUP",slug:"17532582675630052237GIO"},
+  {uid:"48771",job:"Ingénieur Avant Vente Cloud",client:"Unitel Group",slug:"17742804908750048771UZP"},
+  {uid:"85643",job:"Revops - Hubspot Admin",client:"CAMPING-CAR PARK",slug:"17792048649980085643HSY"},
+  {uid:"85643",job:"Sales Manager",client:"Shizen",slug:"17768682797360085643Xwa"},
+  {uid:"52244",job:"Consultant en Immobilier d'Entreprise",client:"ENTERPRISE Immobilier",slug:"17695984255800052244Cjq"},
+  {uid:"52244",job:"Directeur Études de prix",client:"Caroni Génie Civil",slug:"17774717719140052244iws"},
+  {uid:"85643",job:"Dev Backend Golang",client:"Upfluence",slug:"17622768266420085643qYS"},
+  {uid:"52244",job:"Chef de projet TCE",client:"INGECO/INGEKEYS",slug:"17320047796940052244kpr"},
+  {uid:"52285",job:"Head of IA",client:"Terabase Energy",slug:"17528278178840052285Moz"},
+  {uid:"52269",job:"Sénior Project Manager",client:"Byond/Kiro",slug:"17770450962730052269gQP"},
+  {uid:"52269",job:"Consultant IA",client:"DFM",slug:"17703949452040052269vRb"},
+  {uid:"52269",job:"Sénior Autonomous Drones Engineer",client:"HyLight",slug:"17768487781930052269Ytj"},
+  {uid:"75012",job:"Founding Sales",client:"CROWN Procurement",slug:"17515555349960048773RrA"},
+  {uid:"85643",job:"Revops - Hubspot Admin",client:"CAMPING-CAR PARK",slug:"17792048649980085643HSY"}
+];
+var DATA_ITW = [
+  {uid:"52244",slug:"17805021141740052244PAr",candidat:"Baptiste Coget",stage:"1st ITW"},
+  {uid:"52319",slug:"17700394404100052319ide",candidat:"Larissa RAMILIARISON",stage:"2nd ITW"},
+  {uid:"52319",slug:"17700394404100052319ide",candidat:"Marvin BOUCHER",stage:"2nd ITW"},
+  {uid:"52319",slug:"17761516967240052319OdY",candidat:"Loic Rama",stage:"1st ITW"},
+  {uid:"52269",slug:"17761717380940052269iEk",candidat:"Judit NOVAK",stage:"2nd ITW"},
+  {uid:"52349",slug:"17791080857850052349nPg",candidat:"Mourad JOMAA",stage:"2nd ITW"},
+  {uid:"49038",slug:"17775657547290048693TZc",candidat:"Kristof Gombas",stage:"1st ITW"},
+  {uid:"49038",slug:"17775657547290048693TZc",candidat:"Petra Frey",stage:"2nd ITW"},
+  {uid:"52276",slug:"17544917841480052276saV",candidat:"Johann OULAI",stage:"Final ITW"},
+  {uid:"52276",slug:"17544917841480052276saV",candidat:"Vincent DESBROSSES",stage:"Final ITW"},
+  {uid:"52276",slug:"17544917841480052276saV",candidat:"Quentin FORAND",stage:"Final ITW"},
+  {uid:"52276",slug:"17544917841480052276saV",candidat:"Sabri Florin",stage:"1st ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Sylvain Le Groux",stage:"1st ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Adrien Doumergue",stage:"3rd ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Beatrice Napolitano",stage:"3rd ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Stephane Remigereau",stage:"2nd ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Theo MAILLARD",stage:"2nd ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Abdellah AIT ABDELMALEK",stage:"1st ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Paul-Eric Latour",stage:"1st ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Pierre Chapuis",stage:"1st ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Victor Baron",stage:"Final ITW"},
+  {uid:"52237",slug:"17654585204870052237djP",candidat:"Axel G. Vincent",stage:"1st ITW"},
+  {uid:"75012",slug:"17760725184990075012EpD",candidat:"Romain LEFORT",stage:"3rd ITW"},
+  {uid:"52257",slug:"17793744519900052257Sym",candidat:"Oscar STEFANINI",stage:"Final ITW"},
+  {uid:"52245",slug:"17791941751640052245eim",candidat:"Mathias Rossignol",stage:"1st ITW"},
+  {uid:"52285",slug:"17800607532230052285zDl",candidat:"Jean-Noel Quintin",stage:"1st ITW"},
+  {uid:"52349",slug:"17778972178200052349QtB",candidat:"Ali Haj-Hassan",stage:"1st ITW"},
+  {uid:"52269",slug:"17793811919030052269atU",candidat:"Adrien Danzon",stage:"2nd ITW"},
+  {uid:"52269",slug:"17793811919030052269atU",candidat:"Yves Pares",stage:"1st ITW"},
+  {uid:"52237",slug:"17773030669650052237FCr",candidat:"Gabriel Chang",stage:"2nd ITW"},
+  {uid:"52237",slug:"17773030669650052237FCr",candidat:"Valery Neira",stage:"1st ITW"},
+  {uid:"52237",slug:"17773030669650052237FCr",candidat:"Matthieu Jacquet",stage:"1st ITW"},
+  {uid:"52276",slug:"17767897815690052276jIo",candidat:"Yuan XUE",stage:"1st ITW"},
+  {uid:"52276",slug:"17767897815690052276jIo",candidat:"Boris HACKER",stage:"1st ITW"},
+  {uid:"125984",slug:"17768534293460125984lyw",candidat:"Ludwig Bazin",stage:"Final ITW"},
+  {uid:"52272",slug:"17803907552600052272MzV",candidat:"Louis Grignola",stage:"1st ITW"},
+  {uid:"52244",slug:"17792810992440052244ZTU",candidat:"Sonja Majstorovic",stage:"Final ITW"},
+  {uid:"52244",slug:"17792810992440052244ZTU",candidat:"John Yohannnes",stage:"Final ITW"},
+  {uid:"125984",slug:"17769393982610125984uPN",candidat:"Charef Eddine CHERRAD",stage:"2nd ITW"},
+  {uid:"52237",slug:"17682964332650052237CST",candidat:"Andriy Parkhomenko",stage:"1st ITW"},
+  {uid:"52237",slug:"17682964332650052237CST",candidat:"Faris Chtatou",stage:"1st ITW"},
+  {uid:"52237",slug:"17682964332650052237CST",candidat:"Elias Demnati",stage:"2nd ITW"},
+  {uid:"52237",slug:"17682964332650052237CST",candidat:"Paul Dejean",stage:"2nd ITW"},
+  {uid:"52237",slug:"17682964332650052237CST",candidat:"Leonard Verschuere",stage:"1st ITW"},
+  {uid:"52276",slug:"17800424454460052276fJo",candidat:"Josselin Joly",stage:"1st ITW"},
+  {uid:"52349",slug:"17804266282820052349qpi",candidat:"Evan Bloyet",stage:"1st ITW"},
+  {uid:"52269",slug:"17800625318880052269Aag",candidat:"Mustapha AZNAG",stage:"2nd ITW"},
+  {uid:"52285",slug:"17749657106530052285FoO",candidat:"Barthelemy Gouby",stage:"1st ITW"},
+  {uid:"90160",slug:"17788364974340090160Etf",candidat:"Tristan Briend",stage:"3rd ITW"},
+  {uid:"90160",slug:"17788364974340090160Etf",candidat:"Mehdi Bouallam",stage:"3rd ITW"},
+  {uid:"90160",slug:"17788364974340090160Etf",candidat:"Maxime Vonthron",stage:"2nd ITW"},
+  {uid:"49038",slug:"17738553898860049038uAy",candidat:"Soukaïna Sbai",stage:"1st ITW"},
+  {uid:"49038",slug:"17738553898860049038uAy",candidat:"Ali ELKALADY",stage:"1st ITW"},
+  {uid:"52339",slug:"17798060894360052339NWC",candidat:"Renjie Zhu",stage:"2nd ITW"},
+  {uid:"52339",slug:"17798060894360052339NWC",candidat:"Timothee Gain",stage:"1st ITW"},
+  {uid:"52244",slug:"17774709426790052244iUC",candidat:"Hugo PLAIRE",stage:"Final ITW"},
+  {uid:"52349",slug:"17799986156740052349FeU",candidat:"Guillaume DE MONTECLER",stage:"1st ITW"},
+  {uid:"75012",slug:"17797129388830075012xOm",candidat:"Vinay kumar PILLA",stage:"1st ITW"},
+  {uid:"52269",slug:"17712359449780052269nwU",candidat:"Jeremie Nicolle",stage:"2nd ITW"},
+  {uid:"52285",slug:"17780590234240052285xHv",candidat:"Arthur Carreton",stage:"3rd ITW"},
+  {uid:"52269",slug:"17712379194060052269KLb",candidat:"Ghizlene Lachachi",stage:"1st ITW"},
+  {uid:"52269",slug:"17712379194060052269KLb",candidat:"Thibault Deglane",stage:"4th ITW"},
+  {uid:"52269",slug:"17712379194060052269KLb",candidat:"Jeremy Lefebvre",stage:"3rd ITW"},
+  {uid:"125984",slug:"17800691035150125984ilF",candidat:"Martin Vauchel",stage:"1st ITW"},
+  {uid:"90160",slug:"17772950636830090160GrW",candidat:"Thomas BERTRAND",stage:"1st ITW"},
+  {uid:"52272",slug:"17779713039040052272Tdv",candidat:"Mohamed Kourgheli",stage:"Final ITW"},
+  {uid:"52272",slug:"17779713039040052272Tdv",candidat:"Roman Chaudre",stage:"1st ITW"},
+  {uid:"52272",slug:"17779713039040052272Tdv",candidat:"Christian CHECKOUMAR",stage:"1st ITW"},
+  {uid:"52272",slug:"17781642778750052272shC",candidat:"kevin Sonwa",stage:"1st ITW"},
+  {uid:"52272",slug:"17781642778750052272shC",candidat:"Megane Deguy",stage:"1st ITW"},
+  {uid:"49038",slug:"17751198635690049038SQr",candidat:"Julien Vadic",stage:"1st ITW"},
+  {uid:"75012",slug:"17781658661900075012BOb",candidat:"Margaux Philippe",stage:"Final ITW"},
+  {uid:"75012",slug:"17781658661900075012BOb",candidat:"Matthis JACQUIN",stage:"Final ITW"},
+  {uid:"75012",slug:"17781658661900075012BOb",candidat:"Diego Neyra",stage:"1st ITW"},
+  {uid:"75012",slug:"17781658661900075012BOb",candidat:"Sandy David",stage:"1st ITW"},
+  {uid:"90160",slug:"17767023023400090160qzw",candidat:"Khadija GHARNATI",stage:"1st ITW"},
+  {uid:"125984",slug:"17772761523500125984jop",candidat:"Mehdi ESSAFI",stage:"1st ITW"},
+  {uid:"125984",slug:"17772761523500125984jop",candidat:"Eliott Eccidio",stage:"1st ITW"},
+  {uid:"52285",slug:"17603489398730052285UOk",candidat:"Youssef Belmahjoub",stage:"2nd ITW"},
+  {uid:"48773",slug:"17737595975130048773ZiW",candidat:"Badii BEN SLAMA",stage:"1st ITW"},
+  {uid:"48773",slug:"17737595975130048773ZiW",candidat:"Andrew Morcos",stage:"1st ITW"},
+  {uid:"52349",slug:"17762463598580052349IfF",candidat:"Quentin Di Salvo",stage:"1st ITW"},
+  {uid:"52257",slug:"17792709218520052257xWI",candidat:"Rodolphe POON",stage:"1st ITW"},
+  {uid:"48771",slug:"17781724760140048771tYU",candidat:"Karim MOUQADEM",stage:"2nd ITW"},
+  {uid:"48771",slug:"17781724760140048771tYU",candidat:"Andrew Morcos",stage:"2nd ITW"},
+  {uid:"85643",slug:"17768714087470085643Bfp",candidat:"Marc-Antoine Guyomard-Deimat",stage:"Final ITW"},
+  {uid:"48771",slug:"17769375247040048771ZOC",candidat:"Florent Muller",stage:"Final ITW"},
+  {uid:"48771",slug:"17769375247040048771ZOC",candidat:"Florian CAHN",stage:"3rd ITW"},
+  {uid:"52269",slug:"17720119094070052269Fjy",candidat:"Erwann Le Corff",stage:"Final ITW"},
+  {uid:"52269",slug:"17720119094070052269Fjy",candidat:"Laurent Douville",stage:"4th ITW"},
+  {uid:"90160",slug:"17712401120570090160MJX",candidat:"Gilliane Brule",stage:"Final ITW"},
+  {uid:"90160",slug:"17712401120570090160MJX",candidat:"Rayen Benmouffok",stage:"2nd ITW"},
+  {uid:"52349",slug:"17437469531400052349VfS",candidat:"Filip RAZEK",stage:"2nd ITW"},
+  {uid:"52349",slug:"17437469531400052349VfS",candidat:"Taher Romdhane",stage:"1st ITW"},
+  {uid:"52349",slug:"17437469531400052349VfS",candidat:"Geoffrey Saunois",stage:"Final ITW"},
+  {uid:"52349",slug:"17437469531400052349VfS",candidat:"Jean-Benoit G.",stage:"1st ITW"},
+  {uid:"75012",slug:"17774702409340075012zhC",candidat:"Gabriel Filiot",stage:"1st ITW"},
+  {uid:"125984",slug:"17778970399570125984kPB",candidat:"Samiath WAIDI",stage:"2nd ITW"},
+  {uid:"125984",slug:"17778970399570125984kPB",candidat:"Estelle KUPIEC",stage:"2nd ITW"},
+  {uid:"125984",slug:"17778970399570125984kPB",candidat:"Mathieu Munier",stage:"1st ITW"},
+  {uid:"75012",slug:"17773708164940075012TAX",candidat:"Anissa KHELLAF",stage:"Final ITW"},
+  {uid:"52269",slug:"17744268693360052269VUt",candidat:"Nicolas Barlier",stage:"1st ITW"},
+  {uid:"52272",slug:"17769539325230052272EAY",candidat:"Nathan Plouvier",stage:"3rd ITW"},
+  {uid:"52272",slug:"17769539325230052272EAY",candidat:"Marco TEIXEIRA",stage:"3rd ITW"},
+  {uid:"52319",slug:"17682965300770052319nxQ",candidat:"Thomas Detragiache",stage:"2nd ITW"},
+  {uid:"52319",slug:"17682965300770052319nxQ",candidat:"Raphael Botros",stage:"1st ITW"},
+  {uid:"52319",slug:"17682965300770052319nxQ",candidat:"Frederic Santos",stage:"2nd ITW"},
+  {uid:"52272",slug:"17760951426200052272Gjd",candidat:"Nicolas Cocilovo",stage:"1st ITW"},
+  {uid:"52237",slug:"17425537853440052237uEw",candidat:"Alexandre Assaf-Page",stage:"1st ITW"},
+  {uid:"49038",slug:"17737551562960049038sAj",candidat:"Dr. Alexander Ariel",stage:"Final ITW"},
+  {uid:"90160",slug:"17730555531380090160jpC",candidat:"Yannis Sahraoui",stage:"3rd ITW"},
+  {uid:"49038",slug:"17768490162310049038bRu",candidat:"Carrel Nirina",stage:"2nd ITW"},
+  {uid:"49038",slug:"17768490162310049038bRu",candidat:"Nadir Ait daoud",stage:"3rd ITW"},
+  {uid:"52276",slug:"17756629750760052276jBl",candidat:"Adrien MONTAIGNE",stage:"3rd ITW"},
+  {uid:"52276",slug:"17756629750760052276jBl",candidat:"Louis GUO",stage:"3rd ITW"},
+  {uid:"52276",slug:"17756629750760052276jBl",candidat:"Frederic WANG",stage:"3rd ITW"},
+  {uid:"52276",slug:"17756432230760052276XJE",candidat:"Yann STADNICKI",stage:"5th ITW"},
+  {uid:"120906",slug:"17731396326360120906NZp",candidat:"Anne-Charlotte Gallaud",stage:"Final ITW"},
+  {uid:"52272",slug:"17760942844820052272QhV",candidat:"David Borrat",stage:"2nd ITW"},
+  {uid:"52237",slug:"17532582675630052237GIO",candidat:"Ibrahima Camara",stage:"1st ITW"},
+  {uid:"48771",slug:"17742804908750048771UZP",candidat:"Anthony Pedraja",stage:"Final ITW"},
+  {uid:"85643",slug:"17792048649980085643HSY",candidat:"Boece Frelau",stage:"1st ITW"},
+  {uid:"85643",slug:"17768682797360085643Xwa",candidat:"Adrien Poinas",stage:"2nd ITW"},
+  {uid:"52244",slug:"17695984255800052244Cjq",candidat:"Joevin GAL",stage:"Final ITW"},
+  {uid:"52244",slug:"17774717719140052244iws",candidat:"BELLET Benjamin",stage:"1st ITW"},
+  {uid:"85643",slug:"17622768266420085643qYS",candidat:"Andre Santana Filho",stage:"1st ITW"},
+  {uid:"52244",slug:"17320047796940052244kpr",candidat:"David LIM",stage:"1st ITW"},
+  {uid:"52285",slug:"17528278178840052285Moz",candidat:"Matthieu Perrot",stage:"1st ITW"}
+];
+
+// CONFIG
+var DEF_OBJ = {ca:30000,deals:3,cv:6,firstItw:6,otherItw:4,callsProsp:20,meetingsProsp:3,meetingsClients:3};
+var OBJ_KEYS = ["ca","deals"];
+var COLORS = ["#6366F1","#8B5CF6","#EC4899","#F59E0B","#10B981","#3B82F6","#EF4444","#14B8A6","#F97316","#06B6D4","#84CC16","#9333EA","#E11D48","#0891B2","#65A30D","#7C3AED"];
+
+var gIdx = 0;
+var editUid = null;
+
+function g(id) { return document.getElementById(id); }
+function aColor(uid) { return COLORS[parseInt(String(uid).slice(-2)) % COLORS.length]; }
+function initials(name) { var p = name.trim().split(/\s+/); return p.length >= 2 ? (p[0][0]+p[1][0]).toUpperCase() : name.substring(0,2).toUpperCase(); }
+function scColor(s) { return s>20?"#10B981":s>=10?"#F59E0B":"#EF4444"; }
+function procColor(n) { return n>=9?"#10B981":n>=5?"#F59E0B":"#EF4444"; }
+function actColor(v,lo,hi) { return v>=hi?"#10B981":v>=lo?"#F59E0B":"#EF4444"; }
+function fmtEur(n) { return Number(n||0).toLocaleString("fr-FR") + " EUR"; }
+function pct(v,t) { return t ? Math.min(100,Math.round(v/t*100)) : 0; }
+function getTeam(uid) { try { return localStorage.getItem("team_"+uid)||""; } catch(e){return "";} }
+function setTeam(uid,v) { try { localStorage.setItem("team_"+uid,v); } catch(e){} }
+
+function getObj(uid) {
+  try { var s=localStorage.getItem("obj_"+uid); return s ? Object.assign({},DEF_OBJ,JSON.parse(s)) : Object.assign({},DEF_OBJ); } catch(e) { return Object.assign({},DEF_OBJ); }
+}
+function setObj(uid,obj) { try { localStorage.setItem("obj_"+uid,JSON.stringify(obj)); } catch(e){} }
+
+function getPlan(uid) {
+  try {
+    var s=localStorage.getItem("plan_"+uid);
+    if(s) return JSON.parse(s);
+  } catch(e){}
+  return {qualitative:["Relancer les deals en attente de feedback.","Etre proactif sur l'identification de nouveaux besoins clients."],priorities:["Generer du pipeline sur les jobs actifs","Qualifier 2 nouveaux prospects","Planifier les meetings clients prioritaires"],checks:{}};
+}
+function savePlan(uid,p) { try { localStorage.setItem("plan_"+uid,JSON.stringify(p)); } catch(e){} }
+function getNote(uid) { try { return localStorage.getItem("note_"+uid)||""; } catch(e){return "";} }
+function saveNote(uid,v) { try { localStorage.setItem("note_"+uid,v); } catch(e){} }
+function getFcastEntries(uid,seedItw) {
+  try {
+    var s=localStorage.getItem("fcastentries_"+uid);
+    if(s) return JSON.parse(s);
+  } catch(e){}
+  // seed from Final ITW on first load
+  return (seedItw||[]).map(function(r){
+    var jobMatch=DATA_JOBS.filter(function(j){return j.slug===r.slug;})[0];
+    return {candidat:r.candidat,company:jobMatch?jobMatch.client:"",ca:0,pct:0};
+  });
+}
+function saveFcastEntries(uid,entries) { try { localStorage.setItem("fcastentries_"+uid,JSON.stringify(entries)); } catch(e){} }
+function resetFcastEntries(uid) {
+  localStorage.removeItem("fcastentries_"+uid);
+  renderCard(gIdx);
+}
+function addFcastEntry(uid) {
+  var entries=getFcastEntries(uid,[]);
+  entries.push({candidat:"Nouveau candidat",company:"",ca:0,pct:0});
+  saveFcastEntries(uid,entries);
+  renderCard(gIdx);
+}
+function removeFcastEntry(uid,idx) {
+  var entries=getFcastEntries(uid,[]);
+  entries.splice(idx,1);
+  saveFcastEntries(uid,entries);
+  renderCard(gIdx);
+}
+function updateFcastEntry(uid,idx,field,val) {
+  var entries=getFcastEntries(uid,[]);
+  if(entries[idx]) { entries[idx][field]=val; saveFcastEntries(uid,entries); }
+}
+function getPlanItems(uid,obj) {
+  try {
+    var s=localStorage.getItem("planitems_"+uid);
+    if(s) { var arr=JSON.parse(s); if(arr && arr.length) return arr; }
+  } catch(e){}
+  return [
+    {text:"Envoyer "+obj.cv+" CV",checked:false},
+    {text:"Realiser "+obj.callsProsp+" calls prospect",checked:false},
+    {text:"Organiser "+obj.meetingsProsp+" meetings prospects",checked:false},
+    {text:"Planifier "+obj.meetingsClients+" meetings clients",checked:false},
+    {text:"Relancer les deals en attente de feedback",checked:false},
+    {text:"Proactif sur identification de nouveaux besoins",checked:false}
+  ];
+}
+function savePlanItems(uid,items) { try { localStorage.setItem("planitems_"+uid,JSON.stringify(items)); } catch(e){} }
+function togglePlanItem(uid,idx) {
+  var obj=getObj(uid), items=getPlanItems(uid,obj);
+  if(!items[idx]) return;
+  items[idx].checked=!items[idx].checked;
+  savePlanItems(uid,items);
+  renderCard(gIdx);
+}
+function updatePlanItem(uid,idx,val) { var obj=getObj(uid),items=getPlanItems(uid,obj); if(items[idx]) { items[idx].text=val.trim(); savePlanItems(uid,items); } }
+function addPlanItem(uid) { var obj=getObj(uid),items=getPlanItems(uid,obj); items.push({text:"Nouvel objectif...",checked:false}); savePlanItems(uid,items); renderCard(gIdx); }
+function removePlanItem(uid,idx) { var obj=getObj(uid),items=getPlanItems(uid,obj); items.splice(idx,1); savePlanItems(uid,items); renderCard(gIdx); }
+function renderFcastSummary(uid) {
+  var entries=getFcastEntries(uid,[]);
+  var pot=0, pond=0;
+  entries.forEach(function(e,i){
+    var caEl=document.getElementById("fcastca-"+uid+"-"+i);
+    var pctEl=document.getElementById("fcastpct-"+uid+"-"+i);
+    var ca=caEl?parseInt(caEl.value)||0:e.ca;
+    var pct=pctEl?parseInt(pctEl.value)||0:e.pct;
+    pot+=ca; pond+=Math.round((pct/100)*ca);
+  });
+  var elPot=document.getElementById("fcast-pot-"+uid);
+  var elPond=document.getElementById("fcast-pond-"+uid);
+  if(elPot) elPot.textContent=fmtEur(pot);
+  if(elPond) elPond.textContent=fmtEur(pond);
+}
+
+function getMondayLabel() {
+  var d=new Date(), day=d.getDay(), diff=d.getDate()-day+(day===0?-6:1);
+  var m=new Date(d); m.setDate(diff);
+  var s=m.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+
+// PILLS + NAV
+function buildPills() {
+  var max=9, html="";
+  for(var i=0;i<Math.min(max,DATA_SUMMARY.length);i++){
+    var isA = i===gIdx;
+    html += '<div class="pill'+(isA?" active":"")+'" onclick="goTo('+i+')">'+DATA_SUMMARY[i].name.split(" ")[0]+"</div>";
+  }
+  if(DATA_SUMMARY.length>max) html += '<span style="font-size:11px;color:#9CA3AF;align-self:center;margin-left:4px">+' + (DATA_SUMMARY.length-max) + "</span>";
+  g("pills").innerHTML = html;
+  g("counter").textContent = (gIdx+1) + " / " + DATA_SUMMARY.length;
+}
+
+function goTo(i) { gIdx=i; buildPills(); renderCard(i); window.scrollTo({top:0,behavior:"smooth"}); }
+function nextC() { goTo((gIdx+1)%DATA_SUMMARY.length); }
+function prevC() { goTo((gIdx-1+DATA_SUMMARY.length)%DATA_SUMMARY.length); }
+
+// OBJECTIVES MODAL
+function openObj(uid) {
+  editUid = uid;
+  var c = DATA_SUMMARY.find(function(x){ return x.uid===uid; });
+  g("obj-name").textContent = c ? c.name : "";
+  var obj = getObj(uid);
+  OBJ_KEYS.forEach(function(k){ var el=g("oi-"+k); if(el) el.value=obj[k]; });
+  g("obj-modal").style.display = "flex";
+}
+function closeObj() { g("obj-modal").style.display="none"; editUid=null; }
+function saveObj() {
+  if(!editUid) return;
+  var obj={};
+  OBJ_KEYS.forEach(function(k){ var el=g("oi-"+k); obj[k]=el?(parseInt(el.value)||DEF_OBJ[k]):DEF_OBJ[k]; });
+  setObj(editUid,obj);
+  closeObj();
+  renderCard(gIdx);
+}
+function resetObj() { OBJ_KEYS.forEach(function(k){ var el=g("oi-"+k); if(el) el.value=DEF_OBJ[k]; }); }
+
+// PLAN ACTIONS
+function toggleCheck(uid,key,el) {
+  var p=getPlan(uid); p.checks[key]=!p.checks[key]; savePlan(uid,p);
+  el.className="chk"+(p.checks[key]?" on":"");
+  el.textContent=p.checks[key]?"v":"";
+  var row=el.parentElement, lbl=row.querySelector(".obj-lbl");
+  if(lbl){ lbl.style.textDecoration=p.checks[key]?"line-through":"none"; lbl.style.color=p.checks[key]?"#9CA3AF":"#374151"; }
+}
+function updateQ(uid,idx,val) { var p=getPlan(uid); p.qualitative[idx]=val.trim(); savePlan(uid,p); }
+function addQ(uid) { var p=getPlan(uid); p.qualitative.push("Nouvel engagement..."); savePlan(uid,p); renderCard(gIdx); }
+function removeQ(uid,idx) { var p=getPlan(uid); p.qualitative.splice(idx,1); savePlan(uid,p); renderCard(gIdx); }
+function updateP(uid,idx,val) { var p=getPlan(uid); p.priorities[idx]=val.trim(); savePlan(uid,p); }
+function addP(uid) { var p=getPlan(uid); p.priorities.push("Nouvelle action..."); savePlan(uid,p); renderCard(gIdx); }
+function removeP(uid,idx) { var p=getPlan(uid); p.priorities.splice(idx,1); savePlan(uid,p); renderCard(gIdx); }
+
+// EXPAND JOBS
+function expandJobs(uid) {
+  var d = window._jobsData && window._jobsData[uid];
+  if(!d) return;
+  var body = document.getElementById("jobs-body-"+uid);
+  var btn = document.getElementById("jobs-more-"+uid);
+  if(!body) return;
+  var rows='';
+  d.jobs.forEach(function(j){
+    var jItw=d.itw.filter(function(r){return r.slug===j.slug;});
+    var hColor=jItw.length>=3?"#10B981":jItw.length>=1?"#F59E0B":"#EF4444";
+    var hLabel=jItw.length>=3?"Bon":jItw.length>=1?"Moyen":"Vide";
+    rows+='<tr style="border-top:1px solid #F3F4F6">'
+      +'<td style="padding:8px 8px 8px 0"><div style="font-weight:600;color:#1F2937;line-height:1.3">'+j.job.substring(0,32)+'</div><div style="font-size:11px;color:#9CA3AF">'+j.client+'</div></td>'
+      +'<td style="text-align:center;color:#6B7280">'+jItw.length+'</td>'
+      +'<td style="text-align:center;font-size:11px;font-weight:700;color:'+hColor+'">'+hLabel+'</td></tr>';
+  });
+  body.innerHTML=rows;
+  if(btn) btn.style.display='none';
+}
+
+// TEAM VIEW
+function showTeam() {
+  g("team-modal").style.display="flex";
+  var cols=["Consultant","UL Score","Process","1eres ITW","Calls","CA Mensuel","Deals","Jobs actifs"];
+  g("team-head").innerHTML = cols.map(function(c){return "<th>"+c+"</th>";}).join("");
+  var html="";
+  DATA_SUMMARY.forEach(function(c,i){
+    var col=scColor(c.ulScore);
+    var ca=c.ca>0?fmtEur(c.ca):"-";
+    html += "<tr onclick=\"goTo("+i+");closeTeam()\">"
+      +"<td><div style='display:flex;align-items:center;gap:8px'>"
+      +"<div style='width:28px;height:28px;border-radius:6px;background:"+aColor(c.uid)+";color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0'>"+initials(c.name)+"</div>"
+      +"<span style='font-weight:500'>"+c.name+"</span></div></td>"
+      +"<td><span style='color:"+col+";font-weight:700'>"+c.ulScore+"</span><span style='color:#9CA3AF'>/20</span></td>"
+      +"<td>"+c.nbProcess+"</td>"
+      +"<td>"+c.firstItw+"</td>"
+      +"<td>"+(c.callNA+c.callAb)+"</td>"
+      +"<td style='color:"+(c.ca>0?"#059669":"#9CA3AF")+";font-weight:"+(c.ca>0?600:400)+"'>"+ca+"</td>"
+      +"<td style='color:"+(c.deals>0?"#059669":"#9CA3AF")+";font-weight:"+(c.deals>0?600:400)+"'>"+(c.deals||"-")+"</td>"
+      +"<td>"+c.nbJob+"</td>"
+      +"</tr>";
+  });
+  g("team-body").innerHTML = html;
+}
+function closeTeam() { g("team-modal").style.display="none"; }
+
+// RENDER CARD
+function renderCard(i) {
+  var c = DATA_SUMMARY[i];
+  if(!c) { g("card").innerHTML="<p style='color:red'>Consultant introuvable</p>"; return; }
+  var uid=c.uid, name=c.name;
+  var cItw = DATA_ITW.filter(function(r){ return r.uid===uid; });
+  var cJobs = DATA_JOBS.filter(function(r){ return r.uid===uid; });
+  var otherItw = cItw.filter(function(r){ var s=r.stage.toLowerCase(); return s.indexOf("2nd")>=0||s.indexOf("3rd")>=0||s.indexOf("4th")>=0||s.indexOf("5th")>=0||s.indexOf("final")>=0; }).length;
+  var finalItw = cItw.filter(function(r){ return r.stage.toLowerCase().indexOf("final")>=0; });
+  var calls = c.callNA + c.callAb;
+  var obj = getObj(uid);
+  var plan = getPlan(uid);
+  var note = getNote(uid);
+  var col = scColor(c.ulScore);
+  var caPct = pct(c.ca, obj.ca);
+  var dealPct = pct(c.deals, obj.deals);
+  var weekPct = c.sem ? Math.round(c.sem/52*100) : 0;
+  var pbadgeCls = c.ulScore>=15?"badge-green":c.ulScore>=10?"badge-orange":"badge-red";
+  var pbadgeLbl = c.ulScore>=15?"Bon rythme":c.ulScore>=10?"Orange":"A surveiller";
+
+  var d = document.createElement("div");
+
+  // ---- HEADER ----
+  var header = document.createElement("div");
+  header.className="card";
+  var teamVal = getTeam(uid);
+  var teamSelHtml = '<div style="padding:4px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:12px;color:#374151;background:white">'+c.team+'</div>';
+  header.innerHTML = '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">'
+    +'<div style="display:flex;align-items:center;gap:16px">'
+    +'<div class="avatar" style="background:'+aColor(uid)+';background-image:url(photos/'+uid+'.png);background-size:cover;background-position:center;width:56px;height:56px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center">'
+    +'</div>'
+    +'<div><h1 style="font-size:22px;font-weight:900;color:#111827;margin:0">'+name+'</h1>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-top:4px">'+teamSelHtml+'</div></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button onclick="openObj(\''+uid+'\')" style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;border:1px solid #E5E7EB;padding:6px 12px;border-radius:8px;background:white;cursor:pointer">Objectifs</button>'
+    +'</div></div>';
+  d.appendChild(header);
+
+  // ---- KPIs ----
+  var kpiGrid = document.createElement("div");
+  kpiGrid.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px";
+  var probPct=Math.min(100,Math.round(caPct*1.2));
+  var procCol=procColor(c.nbProcess);
+  var procBadgeCls=c.nbProcess>=9?"badge-green":c.nbProcess>=5?"badge-orange":"badge-red";
+  var procBadgeLbl=c.nbProcess>=9?"Bon rythme":c.nbProcess>=5?"A suivre":"A surveiller";
+  // Build process range bar
+  var procTicks=[0,4,5,8];
+  var procMax=10;
+  var procBarW=160;
+  var procPos=Math.min(c.nbProcess,procMax)/procMax*procBarW;
+  var procRangeBar='<svg width="'+procBarW+'" height="24" style="display:block;margin-top:10px">'
+    +'<rect x="0" y="9" width="'+procBarW+'" height="6" rx="3" fill="#E5E7EB"/>'
+    +'<rect x="0" y="9" width="'+Math.round(procPos)+'" height="6" rx="3" fill="'+procCol+'"/>';
+  [0,4,5,8].forEach(function(t){
+    var x=Math.round(t/procMax*procBarW);
+    procRangeBar+='<line x1="'+x+'" y1="7" x2="'+x+'" y2="17" stroke="#9CA3AF" stroke-width="1"/>';
+    procRangeBar+='<text x="'+x+'" y="24" text-anchor="middle" font-size="9" fill="#9CA3AF">'+t+'</text>';
+  });
+  procRangeBar+='<text x="'+(procBarW)+'" y="24" text-anchor="end" font-size="9" fill="#9CA3AF">8+</text>';
+  procRangeBar+='</svg>';
+
+  // Build UL sparkline (all weeks Sem.1 → Sem.prevSem)
+  var hist=c.ulHistory||[];
+  if(!hist.length){ for(var _i=0;_i<22;_i++) hist.push(c.ulScore); }
+  var spW=160, spH=50;
+  var maxH=Math.max.apply(null,hist)||1;
+  var minH=Math.min.apply(null,hist);
+  var range=maxH-minH||1;
+  var pts=hist.map(function(v,i){
+    var x=Math.round(i/(hist.length-1)*spW);
+    var y=Math.round(spH-((v-minH)/range)*(spH-10)-4);
+    return x+','+y;
+  });
+  var polyPts=pts.join(' ');
+  var fillPts='0,'+(spH+2)+' '+polyPts+' '+spW+','+(spH+2);
+  var lastPt=pts[pts.length-1].split(',');
+  var semStart=c.sem-hist.length; // e.g. 23-22=1
+  var ulSparkline='<svg width="'+spW+'" height="'+(spH+12)+'" style="display:block;margin-top:4px">'
+    +'<defs><linearGradient id="sg'+uid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+col+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+col+'" stop-opacity="0.01"/></linearGradient></defs>'
+    +'<polygon points="'+fillPts+'" fill="url(#sg'+uid+')" />'
+    +'<polyline points="'+polyPts+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    +'<circle cx="'+lastPt[0]+'" cy="'+lastPt[1]+'" r="3.5" fill="white" stroke="'+col+'" stroke-width="2"/>'
+    +'<text x="0" y="'+(spH+12)+'" font-size="9" fill="#9CA3AF">Sem. '+semStart+'</text>'
+    +'<text x="'+spW+'" y="'+(spH+12)+'" font-size="9" fill="#9CA3AF" text-anchor="end">Sem. '+(c.sem-1)+'</text>'
+    +'</svg>';
+
+  kpiGrid.innerHTML =
+    '<div class="card" style="margin-bottom:0">'
+      +'<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;height:28px;display:flex;align-items:flex-start">Process en cours (Total)</div>'
+      +'<div style="font-size:40px;font-weight:900;margin-bottom:2px;color:'+procCol+'">'+c.nbProcess+'</div>'
+      +'<div style="font-size:11px;color:#9CA3AF;margin-bottom:2px">Entretiens en cours &nbsp;<span class="badge '+procBadgeCls+'" style="font-size:10px;padding:2px 8px">'+procBadgeLbl+'</span></div>'
+      +procRangeBar+'</div>'
+    +'<div class="card" style="margin-bottom:0">'
+      +'<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;height:28px;display:flex;align-items:flex-start">UL Score</div>'
+      +'<div style="font-size:40px;font-weight:900;margin-bottom:0;color:'+col+'">'+c.ulScore+'</div>'
+      +'<div style="font-size:11px;color:#9CA3AF;margin-bottom:6px">Semaine '+c.sem+'</div>'
+      +ulSparkline+'</div>'
+    +'<div id="objs-s1-'+uid+'" class="card" style="margin-bottom:0;overflow:auto;max-height:220px"></div>'
+  d.appendChild(kpiGrid);
+
+  // Build "Objs S-1" card via DOM (so onclick works reliably)
+  (function(){
+    var planItems=getPlanItems(uid,obj);
+    var done=planItems.filter(function(it){return it.checked;}).length;
+    var pctColor=planItems.length?(done/planItems.length>=0.8?"#10B981":done/planItems.length>=0.4?"#F59E0B":"#EF4444"):"#9CA3AF";
+    var box=d.querySelector("#objs-s1-"+uid);
+    if(!box) return;
+    var hdr=document.createElement("div");
+    hdr.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px";
+    hdr.innerHTML='<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em">Objs semaine passee</div>'
+      +'<span style="font-size:12px;font-weight:700;color:'+pctColor+'">'+done+'/'+planItems.length+'</span>';
+    box.appendChild(hdr);
+    planItems.forEach(function(it,ii){
+      var row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F9FAFB";
+      var chkEl=document.createElement("div");
+      chkEl.className="chk"+(it.checked?" on":"");
+      chkEl.textContent=it.checked?"v":"";
+      chkEl.addEventListener("click",(function(idx){ return function(){ togglePlanItem(uid,idx); }; })(ii));
+      var lbl=document.createElement("span");
+      lbl.style.cssText="font-size:12px;flex:1;color:"+(it.checked?"#9CA3AF":"#374151")+";text-decoration:"+(it.checked?"line-through":"none");
+      lbl.textContent=it.text;
+      row.appendChild(chkEl);
+      row.appendChild(lbl);
+      box.appendChild(row);
+    });
+  })();
+
+  // ---- CA + DEALS ----
+  var caGrid = document.createElement("div");
+  caGrid.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px";
+  var caBg = caPct>=80?"#10B981":caPct>=40?"#F59E0B":"#D1D5DB";
+  var dealBg = dealPct>=80?"#10B981":dealPct>=40?"#F59E0B":"#D1D5DB";
+  caGrid.innerHTML =
+    '<div class="card" style="margin-bottom:0">'
+      +'<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Objectif CA</div>'
+      +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">'
+      +'<span style="font-size:28px;font-weight:900;color:#111827">'+fmtEur(c.ca)+'</span>'
+      +'<span style="color:#9CA3AF;font-size:14px">/ '+fmtEur(obj.ca)+'</span></div>'
+      +'<div class="pbar-bg"><div class="pbar-fill" style="width:'+caPct+'%;background:'+caBg+'"></div></div>'
+      +'<div style="text-align:right;font-size:11px;font-weight:700;margin-top:4px;color:'+caBg+'">'+caPct+'%</div></div>'
+    +'<div class="card" style="margin-bottom:0">'
+      +'<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Deals signes</div>'
+      +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">'
+      +'<span style="font-size:28px;font-weight:900;color:#111827">'+c.deals+'</span>'
+      +'<span style="color:#9CA3AF;font-size:14px">/ '+obj.deals+' deals</span></div>'
+      +'<div class="pbar-bg"><div class="pbar-fill" style="width:'+dealPct+'%;background:'+dealBg+'"></div></div>'
+      +'<div style="text-align:right;font-size:11px;font-weight:700;margin-top:4px;color:'+dealBg+'">'+dealPct+'%</div></div>';
+  d.appendChild(caGrid);
+
+  // ---- ACTIVITE ----
+  var actCard = document.createElement("div");
+  actCard.className="card";
+  var meetings = (c.meeting||0);
+  var metricData = [
+    {lbl:"1eres ITW",     val:c.firstItw,  color:"#6366F1", lo:3, hi:5},
+    {lbl:"Autres ITW",    val:otherItw,    color:"#8B5CF6", lo:3, hi:5},
+    {lbl:"Meetings",      val:meetings,    color:"#F59E0B", lo:1, hi:2},
+    {lbl:"Calls Prospect",val:calls,       color:"#14B8A6", lo:10,hi:20}
+  ];
+  var actHtml = '<div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Activite & Resultats S-1</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">';
+  metricData.forEach(function(m){
+    var isNA=m.val==="—";
+    var textColor=isNA?"#D1D5DB":actColor(m.val,m.lo,m.hi);
+    actHtml += '<div style="text-align:center">'
+      +'<div style="width:32px;height:32px;border-radius:8px;margin:0 auto 8px;background:'+m.color+'33;display:flex;align-items:center;justify-content:center">'
+      +'<div style="width:12px;height:12px;border-radius:3px;background:'+m.color+'"></div></div>'
+      +'<div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:8px;line-height:1.3">'+m.lbl+'</div>'
+      +'<div style="font-size:22px;font-weight:900;color:'+textColor+'">'+m.val+'</div></div>';
+  });
+  actHtml += '</div>';
+  actCard.innerHTML=actHtml;
+  d.appendChild(actCard);
+
+  // ---- PIPELINE ----
+  var pipeCard = document.createElement("div");
+  pipeCard.className="card";
+  var jobsHtml='<p style="font-size:13px;color:#9CA3AF;font-style:italic">Aucun job actif</p>';
+  window._jobsData = window._jobsData || {};
+  window._jobsData[uid] = {jobs: cJobs, itw: cItw};
+  function buildJobRows(jobs, itw, limit) {
+    var rows = '';
+    jobs.slice(0, limit).forEach(function(j){
+      var jItw=itw.filter(function(r){return r.slug===j.slug;});
+      var hColor=jItw.length>=3?"#10B981":jItw.length>=1?"#F59E0B":"#EF4444";
+      var hLabel=jItw.length>=3?"Bon":jItw.length>=1?"Moyen":"Vide";
+      rows+='<tr style="border-top:1px solid #F3F4F6">'
+        +'<td style="padding:8px 8px 8px 0"><div style="font-weight:600;color:#1F2937;line-height:1.3">'+j.job.substring(0,32)+'</div><div style="font-size:11px;color:#9CA3AF">'+j.client+'</div></td>'
+        +'<td style="text-align:center;color:#6B7280">'+jItw.length+'</td>'
+        +'<td style="text-align:center;font-size:11px;font-weight:700;color:'+hColor+'">'+hLabel+'</td></tr>';
+    });
+    return rows;
+  }
+  if(cJobs.length>0){
+    jobsHtml='<table id="jobs-tbl-'+uid+'" style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#9CA3AF;font-size:10px;text-transform:uppercase"><th style="text-align:left;padding-bottom:8px;font-weight:700">Job / Client</th><th style="text-align:center;padding-bottom:8px;font-weight:700">Cand.</th><th style="text-align:center;padding-bottom:8px;font-weight:700">Sante</th></tr></thead>'
+      +'<tbody id="jobs-body-'+uid+'">'+buildJobRows(cJobs,cItw,6)+'</tbody></table>';
+    if(cJobs.length>6) jobsHtml+='<button id="jobs-more-'+uid+'" onclick="expandJobs(\''+uid+'\')" style="background:none;border:none;color:#7C3AED;font-size:12px;font-weight:500;cursor:pointer;padding:4px 0;margin-top:4px">+'+(cJobs.length-6)+' autres jobs</button>';
+  }
+  // Seed forecast entries from finalItw if first time
+  var fcastEntries=getFcastEntries(uid, finalItw);
+  // Save seeded entries so addFcastEntry/removeFcastEntry can read them later
+  if(!localStorage.getItem("fcastentries_"+uid)) saveFcastEntries(uid, fcastEntries);
+  var initPot=0, initPond=0;
+  fcastEntries.forEach(function(e){ initPot+=e.ca; initPond+=Math.round((e.pct/100)*e.ca); });
+  var forecastHtml='';
+  fcastEntries.forEach(function(e,fi){
+    forecastHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;background:#F0FDF4;border-radius:8px;padding:7px 10px;margin-bottom:4px">'
+      +'<span style="flex:1;min-width:0;overflow:hidden">'
+      +'<span contenteditable="true" style="font-weight:600;outline:none" onblur="updateFcastEntry(\''+uid+'\','+fi+',\'candidat\',this.textContent)">'+e.candidat+'</span>'
+      +(e.company?' <span style="color:#9CA3AF;font-size:11px">@ <span contenteditable="true" style="outline:none" onblur="updateFcastEntry(\''+uid+'\','+fi+',\'company\',this.textContent)">'+e.company+'</span></span>':'')
+      +'</span>'
+      +'<input type="number" min="0" id="fcastca-'+uid+'-'+fi+'" value="'+(e.ca||'')+'" placeholder="CA"'
+      +' oninput="updateFcastEntry(\''+uid+'\','+fi+',\'ca\',parseInt(this.value)||0);renderFcastSummary(\''+uid+'\')"'
+      +' style="width:68px;border:1px solid #D1FAE5;border-radius:6px;padding:3px 5px;font-size:11px;text-align:center;background:white"> EUR'
+      +'<input type="number" min="0" max="100" id="fcastpct-'+uid+'-'+fi+'" value="'+(e.pct||'')+'"'
+      +' oninput="updateFcastEntry(\''+uid+'\','+fi+',\'pct\',parseInt(this.value)||0);renderFcastSummary(\''+uid+'\')"'
+      +' style="width:40px;border:1px solid #D1FAE5;border-radius:6px;padding:3px 5px;font-size:11px;text-align:center;background:white">%'
+      +'<button onclick="removeFcastEntry(\''+uid+'\','+fi+')" style="background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex-shrink:0">&times;</button>'
+      +'</div>';
+  });
+  if(fcastEntries.length===0) forecastHtml='<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px;font-size:12px;color:#B45309">Aucun potentiel</div>';
+  pipeCard.innerHTML='<div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Pipeline & Portefeuille</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">'
+    +'<div><div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px">Jobs actifs ('+cJobs.length+')</div>'+jobsHtml+'</div>'
+    +'<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:600;color:#374151">Forecast potentiels</span><button onclick="addFcastEntry(\''+uid+'\')" style="background:#7C3AED;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter</button><button onclick="resetFcastEntries(\''+uid+'\')" style="background:none;color:#9CA3AF;border:1px solid #E5E7EB;padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;margin-left:4px" title="Réinitialiser depuis le pipeline">↺</button></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
+    +'<div style="background:#F9FAFB;border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#9CA3AF;margin-bottom:4px">CA Potentiel</div><div id="fcast-pot-'+uid+'" style="font-size:13px;font-weight:700;color:#2563EB">'+fmtEur(initPot)+'</div></div>'
+    +'<div style="background:#F9FAFB;border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#9CA3AF;margin-bottom:4px">CA Pondere</div><div id="fcast-pond-'+uid+'" style="font-size:13px;font-weight:700;color:#7C3AED">'+fmtEur(initPond)+'</div></div>'
+    +'</div>'+forecastHtml+'</div></div>';
+  d.appendChild(pipeCard);
+
+  // ---- PLAN D'ACTION (DOM only, no inline onclick) ----
+  var planCard = document.createElement("div");
+  planCard.className="card";
+
+  var planHeader = document.createElement("div");
+  planHeader.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px";
+  var planTitle = document.createElement("div");
+  planTitle.style.cssText="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em";
+  planTitle.textContent="Plan d'action \u2014 Semaine prochaine";
+  var planAddBtn = document.createElement("button");
+  planAddBtn.style.cssText="display:flex;align-items:center;gap:4px;background:#7C3AED;color:white;border:none;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer";
+  planAddBtn.textContent="+ Ajouter";
+  planAddBtn.addEventListener("click", function(){ addPlanItem(uid); });
+  planHeader.appendChild(planTitle);
+  planHeader.appendChild(planAddBtn);
+  planCard.appendChild(planHeader);
+
+  var planGrid = document.createElement("div");
+  planGrid.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:16px";
+  var planItems=getPlanItems(uid,obj);
+  var planHalf=Math.ceil(planItems.length/2);
+  [0,1].forEach(function(col){
+    var colDiv=document.createElement("div");
+    var colStart=col===0?0:planHalf, colEnd=col===0?planHalf:planItems.length;
+    for(var pi=colStart;pi<colEnd;pi++){
+      (function(idx){
+        var it=planItems[idx];
+        var row=document.createElement("div");
+        row.style.cssText="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #F3F4F6";
+        var chk=document.createElement("div");
+        chk.className="chk"+(it.checked?" on":"");
+        chk.style.marginTop="2px";
+        chk.textContent=it.checked?"v":"";
+        chk.addEventListener("click",function(){ togglePlanItem(uid,idx); });
+        var lbl=document.createElement("span");
+        lbl.contentEditable="true";
+        lbl.style.cssText="font-size:13px;flex:1;min-width:0;outline:none;color:"+(it.checked?"#9CA3AF":"#374151")+";text-decoration:"+(it.checked?"line-through":"none");
+        lbl.textContent=it.text;
+        lbl.addEventListener("blur",function(){ updatePlanItem(uid,idx,lbl.textContent); });
+        var del=document.createElement("button");
+        del.style.cssText="background:none;border:none;color:#D1D5DB;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px";
+        del.innerHTML="&times;";
+        del.addEventListener("click",function(){ removePlanItem(uid,idx); });
+        row.appendChild(chk);
+        row.appendChild(lbl);
+        row.appendChild(del);
+        colDiv.appendChild(row);
+      })(pi);
+    }
+    planGrid.appendChild(colDiv);
+  });
+  planCard.appendChild(planGrid);
+  d.appendChild(planCard);
+
+
+
+  g("card").innerHTML="";
+  g("card").appendChild(d);
+}
+
+// NAV
+var NAV=[
+  {id:"reunion",lbl:"Reunion",icon:"M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"},
+  {id:"portefeuille",lbl:"Portef.",icon:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"},
+  {id:"pipeline",lbl:"Pipeline",icon:"M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"},
+  {id:"objectifs",lbl:"Objectifs",icon:"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"},
+  {id:"activite",lbl:"Activite",icon:"M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"},
+  {id:"equipe",lbl:"Equipe",icon:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"},
+  {id:"parametres",lbl:"Param.",icon:"M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"}
+];
+
+function buildNav(){
+  var html="";
+  NAV.forEach(function(n){
+    html+='<div class="nav-item'+(n.id==="reunion"?" active":"")+'" data-nav="'+n.id+'" title="'+n.lbl+'">'
+      +'<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="'+n.icon+'"/></svg>'
+      +'<span>'+n.lbl+'</span></div>';
+  });
+  g("nav-menu").innerHTML=html;
+}
+function navClick(id){
+  document.querySelectorAll(".nav-item").forEach(function(el){el.classList.remove("active");});
+  var el=document.querySelector('.nav-item[data-nav="'+id+'"]');
+  if(el) el.classList.add("active");
+  if(id==="equipe") showTeam();
+}
+// Attach nav clicks after build
+function attachNav(){
+  document.querySelectorAll(".nav-item[data-nav]").forEach(function(el){
+    el.addEventListener("click",function(){ navClick(el.getAttribute("data-nav")); });
+  });
+}
+
+// INIT
+document.addEventListener("DOMContentLoaded", function(){
+  try{
+    buildNav();
+    attachNav();
+    g("top-date").textContent=getMondayLabel();
+    g("data-status").textContent="Semaine 23 - Donnees integrees";
+    buildPills();
+    renderCard(0);
+  } catch(err) {
+    document.body.innerHTML="<pre style='color:red;padding:20px;font-size:14px'>"+err.name+": "+err.message+"\n\n"+err.stack+"</pre>";
+    console.error(err);
+  }
+});
+
+document.addEventListener("keydown",function(e){
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.isContentEditable) return;
+  if(e.key==="ArrowRight") nextC();
+  if(e.key==="ArrowLeft") prevC();
+  if(e.key==="Escape"){closeTeam();closeObj();}
+});
+</script>
+</body>
+</html>
