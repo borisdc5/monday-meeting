@@ -177,19 +177,8 @@
 </div>
 
 <!-- Monday Meeting Page -->
-<div id="monday" class="page">
-  <div class="monday-header">
-    <div><div class="monday-title">Monday Meeting</div></div>
-    <div class="monday-info">
-      <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      <span id="monday-date">Lundi 1 juin 2026</span>
-    </div>
-  </div>
-  <div style="padding: 32px; background: #0f1419; min-height: calc(100vh - 65px); overflow-y: auto;">
-    <div id="monday-content">
-      <!-- Consultant cards will be rendered here -->
-    </div>
-  </div>
+<div id="monday" class="page" style="margin-left: 64px;">
+  <iframe id="monday-frame" src="monday-meeting.html" style="display:block;width:100%;height:100vh;border:0;background:#0f1419;"></iframe>
 </div>
 
 <!-- Placeholder pages -->
@@ -265,7 +254,6 @@ function switchPage(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   event.target.classList.add('active');
   if(page === 'allboard') renderAllBoard();
-  if(page === 'monday') renderMondayMeeting();
 }
 
 function getPhotoUrl(name) {
@@ -317,29 +305,6 @@ function switchProductionTab(tab, el) {
   renderProduction(tab);
 }
 
-function renderMondayMeeting() {
-  var html = '';
-  for(var i = 0; i < DATA_SUMMARY.length; i++) {
-    var c = DATA_SUMMARY[i];
-    var photoUrl = getPhotoUrl(c.name.split(' ')[0].toUpperCase());
-    html += '<div class="consultant-card-full">';
-    html += '<div style="display: flex; gap: 16px; margin-bottom: 24px; align-items: flex-start;">';
-    html += '<div class="consultant-photo" style="width: 100px; height: 100px; flex-shrink: 0; background-image: url(' + photoUrl + ')"></div>';
-    html += '<div style="flex: 1;">';
-    html += '<div style="font-size: 18px; font-weight: 700; color: #e0e7ff; margin-bottom: 4px;">' + c.name + '</div>';
-    html += '<div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">' + c.team + ' • Sem ' + c.sem + '</div>';
-    html += '<div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">';
-    html += '<div class="kpi-card"><div class="kpi-label">Jobs Actifs</div><div class="kpi-value">' + c.nbJob + '</div></div>';
-    html += '<div class="kpi-card"><div class="kpi-label">En Cours</div><div class="kpi-value">' + c.nbProcess + '</div></div>';
-    html += '<div class="kpi-card"><div class="kpi-label">1st ITW</div><div class="kpi-value">' + c.firstItw + '</div></div>';
-    html += '<div class="kpi-card"><div class="kpi-label">UL Score</div><div class="kpi-value">' + c.ulScore.toFixed(1) + '</div></div>';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-  }
-  document.getElementById('monday-content').innerHTML = html;
-}
 
 function renderAllBoard() {
   renderRanking(classements_annuels, 'classement-annuel-top3', 'classement-annuel-table');
