@@ -33,15 +33,6 @@
     .stat-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
 
     .content-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 32px; }
-    @media (max-width: 1200px) {
-      .content-grid { grid-template-columns: 1fr 1fr; }
-      .card-section:nth-child(3) { grid-column: 1 / -1; max-width: 50%; }
-    }
-    @media (max-width: 768px) {
-      .content-grid { grid-template-columns: 1fr; }
-      .card-section:nth-child(3) { max-width: 100%; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
     .card-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 12px; padding: 20px; }
     .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; color: #e0e7ff; }
 
@@ -194,8 +185,8 @@
       <span id="monday-date">Lundi 1 juin 2026</span>
     </div>
   </div>
-  <div style="padding: 24px; background: #0f1419; min-height: calc(100vh - 65px); overflow-y: auto;">
-    <div style="max-width: 900px; margin: 0 auto;" id="monday-content">
+  <div style="padding: 32px; background: #0f1419; min-height: calc(100vh - 65px); overflow-y: auto;">
+    <div id="monday-content">
       <!-- Consultant cards will be rendered here -->
     </div>
   </div>
