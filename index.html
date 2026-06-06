@@ -87,34 +87,35 @@
 
 <!-- AllBoard Page -->
 <div id="allboard" class="page active">
-  <div class="allboard-header">
+  <div class="allboard-header" style="display:flex;align-items:center;justify-content:space-between;">
     <div class="allboard-title">AllBoard</div>
+    <div id="data-status" style="font-size:12px;color:#64748b;">Chargement…</div>
   </div>
   <div class="allboard-content">
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">🏆</div>
         <div class="stat-label">Classement Annuel</div>
-        <div class="stat-value">88</div>
+        <div class="stat-value" id="stat-annual-deals">88</div>
         <div class="stat-sub">Deals</div>
-        <div style="font-size: 16px; font-weight: 700; color: #8b5cf6; margin-top: 4px;">1 084 848 €</div>
+        <div id="stat-annual-ca" style="font-size: 16px; font-weight: 700; color: #8b5cf6; margin-top: 4px;">1 084 848 €</div>
         <div class="stat-sub">CA</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">📅</div>
         <div class="stat-label">Classement Mensuel</div>
-        <div class="stat-value">3</div>
+        <div class="stat-value" id="stat-monthly-deals">3</div>
         <div class="stat-sub">Deals</div>
-        <div style="font-size: 16px; font-weight: 700; color: #3b82f6; margin-top: 4px;">28 600 €</div>
+        <div id="stat-monthly-ca" style="font-size: 16px; font-weight: 700; color: #3b82f6; margin-top: 4px;">28 600 €</div>
         <div class="stat-sub">CA</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🎯</div>
         <div class="stat-label">Objectif CA</div>
-        <div class="stat-value" style="font-size: 18px;">246 000 €</div>
-        <div style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#10b981 0deg, #10b981 47deg, #334155 47deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
+        <div class="stat-value" id="stat-obj-ca" style="font-size: 18px;">246 000 €</div>
+        <div id="stat-obj-ring" style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#10b981 0deg, #10b981 47deg, #334155 47deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
           <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: #0f172a; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
-            <div style="font-size: 11px; font-weight: 700; color: #10b981;">11,63%</div>
+            <div id="stat-obj-pct" style="font-size: 11px; font-weight: 700; color: #10b981;">11,63%</div>
             <div style="font-size: 8px; color: #94a3b8;">Atteinte</div>
           </div>
         </div>
@@ -122,10 +123,10 @@
       <div class="stat-card">
         <div class="stat-icon">🚀</div>
         <div class="stat-label">Palier Booster</div>
-        <div class="stat-value" style="font-size: 18px;">209 100 €</div>
-        <div style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#f59e0b 0deg, #f59e0b 55deg, #334155 55deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
+        <div class="stat-value" id="stat-palier-ca" style="font-size: 18px;">209 100 €</div>
+        <div id="stat-palier-ring" style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#f59e0b 0deg, #f59e0b 55deg, #334155 55deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
           <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: #0f172a; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
-            <div style="font-size: 11px; font-weight: 700; color: #f59e0b;">13,68%</div>
+            <div id="stat-palier-pct" style="font-size: 11px; font-weight: 700; color: #f59e0b;">13,68%</div>
             <div style="font-size: 8px; color: #94a3b8;">Atteinte</div>
           </div>
         </div>
@@ -285,35 +286,155 @@ function renderRanking(data, containerTop3Id, containerTableId) {
   document.getElementById(containerTableId).innerHTML = html;
 }
 
-function renderProduction(tab = 'semaine') {
+function renderProduction(tab) {
+  tab = tab || 'semaine';
+  var sortIdx = tab === 'mois' ? 2 : tab === 'itw' ? 3 : 1;
+  var rows = ul_scores.slice().sort(function(a, b){ return b[sortIdx] - a[sortIdx]; });
   var html = '';
-  for(var i = 0; i < ul_scores.length; i++) {
-    var row = ul_scores[i];
-    var name = row[0];
-    var sem = row[1];
-    var mois = row[2];
-    var itw = row[3];
-    var scoreClass = getScoreColor(sem);
-    html += '<tr><td>' + name + '</td><td class="' + scoreClass + '">' + sem.toFixed(1) + '</td><td class="color-red">' + mois.toFixed(1) + '</td><td>' + itw + '</td></tr>';
+  for(var i = 0; i < rows.length; i++) {
+    var name = rows[i][0], sem = rows[i][1], mois = rows[i][2], itw = rows[i][3];
+    html += '<tr><td>' + name + '</td>'
+      + '<td class="' + getScoreColor(sem) + '">' + sem.toFixed(1) + '</td>'
+      + '<td class="' + getScoreColor(mois) + '">' + mois.toFixed(1) + '</td>'
+      + '<td>' + itw + '</td></tr>';
   }
   document.getElementById('production-table').innerHTML = html;
 }
 
 function switchProductionTab(tab, el) {
+  currentProdTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   renderProduction(tab);
 }
 
 
+var currentProdTab = 'semaine';
+
 function renderAllBoard() {
   renderRanking(classements_annuels, 'classement-annuel-top3', 'classement-annuel-table');
   renderRanking(classements_mensuels, 'classement-mensuel-top3', 'classement-mensuel-table');
-  renderProduction('semaine');
+  renderProduction(currentProdTab);
+}
+
+// ---- Chargement dynamique depuis Google Sheets ----
+var SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-mR3SrdzeSVax30LCsanbAJ8v_2_2UJSBWgz6kHw5jghKCaOfxOUF68qZNieWJwxf2hT_tHdP0tX/pub?gid=2060399592&single=true&output=csv";
+var REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+
+function parseCSV(text) {
+  var rows = [], row = [], field = '', inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (ch === '\r') { /* ignore */ }
+      else field += ch;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function cell(rows, r, c) { return (rows[r] && rows[r][c] != null) ? rows[r][c].trim() : ''; }
+function parseEuro(s) { var n = parseInt((s || '').replace(/[^0-9]/g, ''), 10); return isNaN(n) ? 0 : n; }
+function parseScore(s) { var n = parseFloat((s || '').replace(/[^0-9,.-]/g, '').replace(',', '.')); return isNaN(n) ? 0 : n; }
+
+function rebuildFromCSV(rows) {
+  // Repères de lignes
+  var hdr = -1, lbl = -1, prodHdr = -1;
+  for (var r = 0; r < rows.length; r++) {
+    if (cell(rows, r, 2) === 'Consultant' && hdr === -1) hdr = r;
+    if (cell(rows, r, 15) === 'Objectif' && lbl === -1) lbl = r;
+    if (cell(rows, r, 15) === 'UL SCORE SEMAINE' && prodHdr === -1) prodHdr = r;
+  }
+  if (hdr === -1) throw new Error('Structure CSV inattendue (en-tete Consultant introuvable)');
+
+  // Classement annuel : top3 (cols 2,4,6) + lignes 4+ (col1 rang, col2 nom, col4 CA, col6 deals)
+  var annual = [];
+  [2,4,6].forEach(function(c){ annual.push([cell(rows,hdr-3,c), parseEuro(cell(rows,hdr-2,c)), parseEuro(cell(rows,hdr-1,c))]); });
+  for (var r = hdr+1; r < rows.length; r++) {
+    var name = cell(rows, r, 2);
+    if (!name || !/^\d+$/.test(cell(rows, r, 1))) continue;
+    annual.push([name, parseEuro(cell(rows, r, 4)), parseEuro(cell(rows, r, 6))]);
+  }
+
+  // Classement mensuel : top3 (cols 9,11,13) + lignes 4+ (col8 rang, col9 nom, col11 CA, col13 deals)
+  var monthly = [];
+  [9,11,13].forEach(function(c){ monthly.push([cell(rows,hdr-3,c), parseEuro(cell(rows,hdr-2,c)), parseEuro(cell(rows,hdr-1,c))]); });
+  for (var r = hdr+1; r < rows.length; r++) {
+    var name = cell(rows, r, 9);
+    if (!name || !/^\d+$/.test(cell(rows, r, 8))) continue;
+    monthly.push([name, parseEuro(cell(rows, r, 11)), parseEuro(cell(rows, r, 13))]);
+  }
+
+  // Production UL Score : 3 listes (semaine col16/17, mois col19/20, ITW col22/23)
+  var prod = {};
+  function ensure(n){ if(!prod[n]) prod[n] = {name:n, sem:0, mois:0, itw:0}; return prod[n]; }
+  if (prodHdr !== -1) {
+    for (var r = prodHdr+1; r < rows.length; r++) {
+      var ns = cell(rows, r, 16); if (ns) ensure(ns).sem = parseScore(cell(rows, r, 17));
+      var nm = cell(rows, r, 19); if (nm) ensure(nm).mois = parseScore(cell(rows, r, 20));
+      var ni = cell(rows, r, 22); if (ni) ensure(ni).itw = parseEuro(cell(rows, r, 23));
+    }
+  }
+  var ul = Object.keys(prod).map(function(k){ var p = prod[k]; return [p.name, p.sem, p.mois, p.itw]; });
+
+  // Affecte les globales seulement si on a des donnees
+  if (annual.length) classements_annuels = annual;
+  if (monthly.length) classements_mensuels = monthly;
+  if (ul.length) ul_scores = ul;
+
+  // Stats
+  if (lbl !== -1) {
+    var val = lbl + 1;
+    setText('stat-annual-deals', cell(rows, val, 2));
+    setText('stat-annual-ca', formatEuro(parseEuro(cell(rows, val, 4))));
+    setText('stat-monthly-deals', cell(rows, val, 9));
+    setText('stat-monthly-ca', formatEuro(parseEuro(cell(rows, val, 11))));
+    setText('stat-obj-ca', formatEuro(parseEuro(cell(rows, lbl, 17))));
+    setText('stat-palier-ca', formatEuro(parseEuro(cell(rows, lbl, 22))));
+    var objPct = cell(rows, val, 17), palPct = cell(rows, val, 22);
+    setText('stat-obj-pct', objPct);
+    setText('stat-palier-pct', palPct);
+    setRing('stat-obj-ring', parseScore(objPct), '#10b981');
+    setRing('stat-palier-ring', parseScore(palPct), '#f59e0b');
+  }
+}
+
+function setText(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
+function formatEuro(n) { return n.toLocaleString() + ' €'; }
+function setRing(id, pct, color) {
+  var el = document.getElementById(id); if (!el) return;
+  var deg = Math.max(0, Math.min(100, pct)) / 100 * 360;
+  el.style.background = 'conic-gradient(' + color + ' 0deg, ' + color + ' ' + deg + 'deg, #334155 ' + deg + 'deg)';
+}
+
+function loadData() {
+  fetch(SHEET_CSV_URL, { cache: 'no-store' })
+    .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+    .then(function(text){
+      rebuildFromCSV(parseCSV(text));
+      renderAllBoard();
+      var t = new Date();
+      setText('data-status', 'Mis à jour à ' + t.toLocaleTimeString());
+    })
+    .catch(function(err){
+      console.error('Echec chargement Sheet:', err);
+      setText('data-status', 'Hors ligne — données en cache');
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  renderAllBoard();
+  renderAllBoard();   // rendu immediat avec donnees en cache
+  loadData();         // puis chargement live
+  setInterval(loadData, REFRESH_MS);
 });
 </script>
 </body>
