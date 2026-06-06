@@ -4,7 +4,7 @@
     {
       "name": "reunion",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "7823"],
+      "runtimeArgs": ["-m", "http.server", "7823", "--directory", "/Users/candicelenglart/reunion-lundi"],
       "port": 7823
     }
   ]
