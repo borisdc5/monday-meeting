@@ -261,7 +261,7 @@ function getPhotoUrl(name) {
   return uid ? 'photos/' + uid + '.png' : '';
 }
 
-function renderRanking(data, containerTop3Id, containerTableId, maxTableRows = 10) {
+function renderRanking(data, containerTop3Id, containerTableId) {
   // Top 3 avec photos
   var html = '';
   for(var i = 0; i < Math.min(3, data.length); i++) {
@@ -276,7 +276,7 @@ function renderRanking(data, containerTop3Id, containerTableId, maxTableRows = 1
 
   // Table pour rangs 4+
   html = '';
-  for(var i = Math.min(3, data.length); i < Math.min(data.length, 3 + maxTableRows); i++) {
+  for(var i = Math.min(3, data.length); i < data.length; i++) {
     var name = data[i][0];
     var ca = data[i][1];
     var deals = data[i][2];
