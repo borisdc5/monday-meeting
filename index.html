@@ -61,15 +61,15 @@
     .tab.active { color: #8b5cf6; border-bottom-color: #8b5cf6; }
 
     /* Monday Meeting Styles */
-    .monday-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: white; border-bottom: 1px solid #e5e7eb; sticky: top; }
-    .monday-title { font-weight: 700; font-size: 15px; color: #111827; }
-    .monday-info { display: flex; align-items: center; gap: 6px; background: #f3f4f6; border-radius: 8px; padding: 6px 12px; font-size: 13px; color: #6b7280; }
+    .monday-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 1px solid #334155; sticky: top; z-index: 10; }
+    .monday-title { font-weight: 700; font-size: 15px; color: #e0e7ff; }
+    .monday-info { display: flex; align-items: center; gap: 6px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; padding: 6px 12px; font-size: 13px; color: #a78bfa; }
 
-    .consultant-card-full { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
+    .consultant-card-full { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .kpi-card { background: #f9fafb; border-radius: 12px; padding: 20px; }
-    .kpi-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; }
-    .kpi-value { font-size: 28px; font-weight: 700; color: #111827; }
+    .kpi-card { background: rgba(139, 92, 246, 0.1); border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+    .kpi-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+    .kpi-value { font-size: 28px; font-weight: 700; color: #e0e7ff; }
   </style>
 </head>
 <body>
@@ -185,8 +185,10 @@
       <span id="monday-date">Lundi 1 juin 2026</span>
     </div>
   </div>
-  <div style="padding: 24px; background: #f3f4f6; min-height: calc(100vh - 65px); overflow-y: auto;">
-    <div id="monday-content"></div>
+  <div style="padding: 24px; background: #0f1419; min-height: calc(100vh - 65px); overflow-y: auto;">
+    <div style="max-width: 900px; margin: 0 auto;" id="monday-content">
+      <!-- Consultant cards will be rendered here -->
+    </div>
   </div>
 </div>
 
@@ -263,6 +265,7 @@ function switchPage(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   event.target.classList.add('active');
   if(page === 'allboard') renderAllBoard();
+  if(page === 'monday') renderMondayMeeting();
 }
 
 function getPhotoUrl(name) {
@@ -312,6 +315,30 @@ function switchProductionTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   renderProduction(tab);
+}
+
+function renderMondayMeeting() {
+  var html = '';
+  for(var i = 0; i < DATA_SUMMARY.length; i++) {
+    var c = DATA_SUMMARY[i];
+    var photoUrl = getPhotoUrl(c.name.split(' ')[0].toUpperCase());
+    html += '<div class="consultant-card-full">';
+    html += '<div style="display: flex; gap: 16px; margin-bottom: 24px; align-items: flex-start;">';
+    html += '<div class="consultant-photo" style="width: 100px; height: 100px; flex-shrink: 0; background-image: url(' + photoUrl + ')"></div>';
+    html += '<div style="flex: 1;">';
+    html += '<div style="font-size: 18px; font-weight: 700; color: #e0e7ff; margin-bottom: 4px;">' + c.name + '</div>';
+    html += '<div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">' + c.team + ' • Sem ' + c.sem + '</div>';
+    html += '<div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">';
+    html += '<div class="kpi-card"><div class="kpi-label">Jobs Actifs</div><div class="kpi-value">' + c.nbJob + '</div></div>';
+    html += '<div class="kpi-card"><div class="kpi-label">En Cours</div><div class="kpi-value">' + c.nbProcess + '</div></div>';
+    html += '<div class="kpi-card"><div class="kpi-label">1st ITW</div><div class="kpi-value">' + c.firstItw + '</div></div>';
+    html += '<div class="kpi-card"><div class="kpi-label">UL Score</div><div class="kpi-value">' + c.ulScore.toFixed(1) + '</div></div>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  document.getElementById('monday-content').innerHTML = html;
 }
 
 function renderAllBoard() {
