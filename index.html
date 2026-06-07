@@ -78,7 +78,7 @@
   <div class="logo">D</div>
   <div class="nav-item active" onclick="switchPage('allboard')" title="AllBoard">📊</div>
   <div class="nav-item" onclick="switchPage('monday')" title="Monday Meeting">👥</div>
-  <div class="nav-item" onclick="switchPage('pipeline')" title="Pipeline">🎯</div>
+  <div class="nav-item" onclick="switchPage('potentiels')" title="Potentiels">💰</div>
   <div class="nav-item" onclick="switchPage('objectifs')" title="Objectifs">🎪</div>
   <div class="nav-item" onclick="switchPage('activites')" title="Activités">⚡</div>
   <div class="nav-item" onclick="switchPage('equipe')" title="Equipe">👨‍💼</div>
@@ -182,8 +182,25 @@
   <iframe id="monday-frame" src="monday-meeting.html" style="display:block;width:100%;height:100vh;border:0;background:#0f1419;"></iframe>
 </div>
 
+<!-- Potentiels Page -->
+<div id="potentiels" class="page">
+  <div class="allboard-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div class="allboard-title">Potentiels</div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:2px;">Tous les potentiels annoncés en Monday Meeting · semaine à venir</div>
+    </div>
+    <div id="pot-status" style="font-size:12px;color:#64748b;"></div>
+  </div>
+  <div class="allboard-content">
+    <div id="pot-kpis" class="stats-grid" style="grid-template-columns:repeat(4,1fr);"></div>
+    <div class="card-section" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table id="pot-table" class="ranking-table" style="margin-top:0;"></table>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Placeholder pages -->
-<div id="pipeline" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Pipeline (À venir)</h1></div></div>
 <div id="objectifs" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Objectifs (À venir)</h1></div></div>
 <div id="activites" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Activités (À venir)</h1></div></div>
 <div id="equipe" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Equipe (À venir)</h1></div></div>
@@ -255,6 +272,102 @@ function switchPage(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   event.target.classList.add('active');
   if(page === 'allboard') renderAllBoard();
+  if(page === 'potentiels') renderPotentiels();
+}
+
+// ---- POTENTIELS ----
+function potEur(n) { return '€' + Number(n||0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function potTypeMeta(pct) {
+  if(pct >= 100) return {label:'Deal', bg:'rgba(16,185,129,0.15)', col:'#10b981'};
+  if(pct <= 0)   return {label:'Nogo', bg:'rgba(239,68,68,0.15)', col:'#ef4444'};
+  return {label:'Potentiel', bg:'rgba(99,102,241,0.18)', col:'#a5b4fc'};
+}
+function buMeta(team) {
+  var t = (team||'').toLowerCase();
+  var map = {
+    paris:   {emoji:'🥖', bg:'rgba(245,158,11,0.15)', col:'#fbbf24'},
+    lyon:    {emoji:'🦁', bg:'rgba(239,68,68,0.15)', col:'#f87171'},
+    bordeaux:{emoji:'🍷', bg:'rgba(168,85,247,0.15)', col:'#c084fc'},
+    briks:   {emoji:'🧱', bg:'rgba(59,130,246,0.15)', col:'#60a5fa'}
+  };
+  var m = map[t] || {emoji:'📍', bg:'rgba(100,116,139,0.15)', col:'#94a3b8'};
+  return {label:(team||'—'), emoji:m.emoji, bg:m.bg, col:m.col};
+}
+function collectPotentiels() {
+  var rows = [];
+  for(var i=0;i<DATA_SUMMARY.length;i++){
+    var c = DATA_SUMMARY[i];
+    var raw;
+    try { raw = localStorage.getItem('fcastentries_' + c.uid); } catch(e) { raw = null; }
+    if(!raw) continue;
+    var entries;
+    try { entries = JSON.parse(raw); } catch(e) { continue; }
+    if(!entries || !entries.length) continue;
+    entries.forEach(function(e){
+      var ca = Number(e.ca)||0, pct = Number(e.pct)||0;
+      rows.push({
+        team: c.team, consultant: c.name, uid: c.uid,
+        candidat: e.candidat || '—', company: e.company || '',
+        ca: ca, pct: pct, pond: ca * pct / 100
+      });
+    });
+  }
+  return rows;
+}
+function renderPotentiels() {
+  var rows = collectPotentiels();
+  // sort by weighted CA desc
+  rows.sort(function(a,b){ return b.pond - a.pond; });
+
+  var totCA = 0, totPond = 0, nbDeal = 0;
+  rows.forEach(function(r){ totCA += r.ca; totPond += r.pond; if(r.pct>=100) nbDeal++; });
+
+  var kpis = document.getElementById('pot-kpis');
+  kpis.innerHTML =
+    '<div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">Potentiels annoncés</div><div class="stat-value">'+rows.length+'</div></div>'
+   +'<div class="stat-card"><div class="stat-icon">💶</div><div class="stat-label">CA prévu total</div><div class="stat-value">'+potEur(totCA)+'</div></div>'
+   +'<div class="stat-card"><div class="stat-icon">⚖️</div><div class="stat-label">CA pondéré total</div><div class="stat-value" style="color:#10b981">'+potEur(totPond)+'</div></div>'
+   +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Deals (100%)</div><div class="stat-value">'+nbDeal+'</div></div>';
+
+  var st = document.getElementById('pot-status');
+  if(st) st.textContent = rows.length ? (rows.length + ' lignes') : '';
+
+  var tbl = document.getElementById('pot-table');
+  var head = '<thead><tr>'
+    +'<th>BU</th><th>Consultant</th><th>Candidat</th>'
+    +'<th style="text-align:right">CA prévu</th><th style="text-align:right">Indice</th>'
+    +'<th style="text-align:right">Deal pondéré</th><th style="text-align:right">CA pondéré</th>'
+    +'<th>Type</th></tr></thead>';
+
+  if(!rows.length) {
+    tbl.innerHTML = head + '<tbody><tr><td colspan="8" style="text-align:center;color:#64748b;padding:40px 8px;">Aucun potentiel annoncé pour le moment.<br><span style="font-size:11px;">Les potentiels saisis dans la page Monday Meeting (section Forecast) apparaîtront ici.</span></td></tr></tbody>';
+    return;
+  }
+
+  var body = '<tbody>';
+  rows.forEach(function(r){
+    var bu = buMeta(r.team);
+    var tp = potTypeMeta(r.pct);
+    var pondDeal = (r.pct/100);
+    body += '<tr>'
+      +'<td><span style="display:inline-flex;align-items:center;gap:5px;background:'+bu.bg+';color:'+bu.col+';padding:2px 9px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap">'+bu.emoji+' '+bu.label+'</span></td>'
+      +'<td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:6px;background-image:url(photos/'+r.uid+'.png);background-size:cover;background-position:center;background-color:#334155;flex-shrink:0"></div><span style="font-weight:600;color:#e0e7ff">'+r.consultant+'</span></div></td>'
+      +'<td style="color:#cbd5e1">'+r.candidat+(r.company?'<span style="color:#64748b"> · '+r.company+'</span>':'')+'</td>'
+      +'<td style="text-align:right;color:#e0e7ff;font-weight:600">'+potEur(r.ca)+'</td>'
+      +'<td style="text-align:right;color:'+tp.col+';font-weight:600">'+r.pct+'%</td>'
+      +'<td style="text-align:right;color:#94a3b8">'+(Number.isInteger(pondDeal)?pondDeal:pondDeal.toFixed(2))+'</td>'
+      +'<td style="text-align:right;color:#10b981;font-weight:600">'+potEur(r.pond)+'</td>'
+      +'<td><span style="background:'+tp.bg+';color:'+tp.col+';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:600">'+tp.label+'</span></td>'
+      +'</tr>';
+  });
+  body += '<tr style="border-top:2px solid #334155">'
+    +'<td colspan="3" style="font-weight:700;color:#e0e7ff">TOTAL</td>'
+    +'<td style="text-align:right;font-weight:700;color:#e0e7ff">'+potEur(totCA)+'</td>'
+    +'<td></td><td></td>'
+    +'<td style="text-align:right;font-weight:700;color:#10b981">'+potEur(totPond)+'</td>'
+    +'<td></td></tr>';
+  body += '</tbody>';
+  tbl.innerHTML = head + body;
 }
 
 function getPhotoUrl(name) {
