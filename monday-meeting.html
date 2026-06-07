@@ -1221,9 +1221,31 @@ function loadMondayData() {
   });
 }
 
+// === Reset ponctuel des objectifs "semaine prochaine" (le haut "semaine passee" est conserve) ===
+// Pour redeclencher un reset plus tard, changer la valeur du jeton ci-dessous.
+var PLAN_NEXT_RESET_TOKEN = "2026-06-08";
+function meetingMondayWeekId(){
+  var d=new Date(), day=d.getDay();
+  var add=(day===1)?0:((8-day)%7);
+  var m=new Date(d); m.setDate(d.getDate()+add);
+  return isoWeekId(m); // semaine du lundi de reunion -> evite tout rollover destructeur
+}
+function resetAllPlanNextOnce(){
+  try{
+    if(localStorage.getItem("plannext_reset")===PLAN_NEXT_RESET_TOKEN) return;
+    var wk=meetingMondayWeekId(), empty=JSON.stringify({week:wk,items:[]});
+    // vide pour tous les consultants connus
+    DATA_SUMMARY.forEach(function(c){ localStorage.setItem("plannext_"+c.uid, empty); });
+    // vide aussi toute cle plannext_ residuelle (anciens uid, etc.)
+    Object.keys(localStorage).forEach(function(k){ if(k.indexOf("plannext_")===0) localStorage.setItem(k, empty); });
+    localStorage.setItem("plannext_reset", PLAN_NEXT_RESET_TOKEN);
+  }catch(e){}
+}
+
 // INIT
 document.addEventListener("DOMContentLoaded", function(){
   try{
+    resetAllPlanNextOnce();
     buildNav();
     attachNav();
     g("top-date").textContent=getMondayLabel();
