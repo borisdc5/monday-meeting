@@ -370,6 +370,18 @@ function aColor(uid) { return COLORS[parseInt(String(uid).slice(-2)) % COLORS.le
 function initials(name) { var p = name.trim().split(/\s+/); return p.length >= 2 ? (p[0][0]+p[1][0]).toUpperCase() : name.substring(0,2).toUpperCase(); }
 function scColor(s) { return s>20?"#10B981":s>=10?"#F59E0B":"#EF4444"; }
 function procColor(n) { return n>=9?"#10B981":n>=5?"#F59E0B":"#EF4444"; }
+// Heatmap gradient: dark red -> red -> orange -> yellow-green -> fluo green
+function gradColor(r) {
+  r = Math.max(0, Math.min(1, r));
+  var stops = [[127,29,29],[239,68,68],[245,158,11],[163,230,53],[57,255,20]];
+  var seg = r * (stops.length - 1);
+  var i = Math.min(Math.floor(seg), stops.length - 2);
+  var t = seg - i, a = stops[i], b = stops[i+1];
+  var ch = function(k){ return Math.round(a[k] + (b[k]-a[k])*t); };
+  return "rgb(" + ch(0) + "," + ch(1) + "," + ch(2) + ")";
+}
+function procGradColor(n) { return gradColor(n / 15); }
+function ulGradColor(s) { return gradColor(s / 30); }
 function actColor(v,lo,hi) { return v>=hi?"#10B981":v>=lo?"#F59E0B":"#EF4444"; }
 function fmtEur(n) { return Number(n||0).toLocaleString("fr-FR") + " EUR"; }
 function pct(v,t) { return t ? Math.min(100,Math.round(v/t*100)) : 0; }
@@ -582,7 +594,7 @@ function renderCard(i) {
   var obj = getObj(uid);
   var plan = getPlan(uid);
   var note = getNote(uid);
-  var col = scColor(c.ulScore);
+  var col = ulGradColor(c.ulScore);
   var caPct = pct(c.ca, obj.ca);
   var dealPct = pct(c.deals, obj.deals);
   var weekPct = c.sem ? Math.round(c.sem/52*100) : 0;
@@ -612,23 +624,29 @@ function renderCard(i) {
   var kpiGrid = document.createElement("div");
   kpiGrid.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px";
   var probPct=Math.min(100,Math.round(caPct*1.2));
-  var procCol=procColor(c.nbProcess);
+  var procCol=procGradColor(c.nbProcess);
   var procBadgeCls=c.nbProcess>=9?"badge-green":c.nbProcess>=5?"badge-orange":"badge-red";
   var procBadgeLbl=c.nbProcess>=9?"Bon rythme":c.nbProcess>=5?"A suivre":"A surveiller";
-  // Build process range bar
-  var procTicks=[0,4,5,8];
+  // Build process range bar (axis 0-5-10+, color gradient maxing at 15+)
   var procMax=10;
   var procBarW=160;
   var procPos=Math.min(c.nbProcess,procMax)/procMax*procBarW;
+  var procGradId='pg'+uid;
+  var procStops='';
+  [0,0.25,0.5,0.75,1].forEach(function(o){
+    procStops+='<stop offset="'+(o*100)+'%" stop-color="'+gradColor(o*procMax/15)+'"/>';
+  });
   var procRangeBar='<svg width="'+procBarW+'" height="24" style="display:block;margin-top:10px">'
+    +'<defs><linearGradient id="'+procGradId+'" x1="0" y1="0" x2="1" y2="0">'+procStops+'</linearGradient></defs>'
     +'<rect x="0" y="9" width="'+procBarW+'" height="6" rx="3" fill="#334155"/>'
-    +'<rect x="0" y="9" width="'+Math.round(procPos)+'" height="6" rx="3" fill="'+procCol+'"/>';
-  [0,4,5,8].forEach(function(t){
+    +'<rect x="0" y="9" width="'+Math.round(procPos)+'" height="6" rx="3" fill="url(#'+procGradId+')"/>';
+  [0,5].forEach(function(t){
     var x=Math.round(t/procMax*procBarW);
     procRangeBar+='<line x1="'+x+'" y1="7" x2="'+x+'" y2="17" stroke="#94a3b8" stroke-width="1"/>';
     procRangeBar+='<text x="'+x+'" y="24" text-anchor="middle" font-size="9" fill="#94a3b8">'+t+'</text>';
   });
-  procRangeBar+='<text x="'+(procBarW)+'" y="24" text-anchor="end" font-size="9" fill="#94a3b8">8+</text>';
+  procRangeBar+='<line x1="'+procBarW+'" y1="7" x2="'+procBarW+'" y2="17" stroke="#94a3b8" stroke-width="1"/>';
+  procRangeBar+='<text x="'+(procBarW)+'" y="24" text-anchor="end" font-size="9" fill="#94a3b8">10+</text>';
   procRangeBar+='</svg>';
 
   // Build UL sparkline (all weeks Sem.1 → Sem.prevSem)
