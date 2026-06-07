@@ -288,13 +288,13 @@ function derivedStatus(pct) { return pct >= 100 ? 'deal' : (pct <= 0 ? 'nogo' : 
 function buMeta(team) {
   var t = (team||'').toLowerCase();
   var map = {
-    paris:   {emoji:'🥖', bg:'rgba(245,158,11,0.15)', col:'#fbbf24'},
-    lyon:    {emoji:'🦁', bg:'rgba(239,68,68,0.15)', col:'#f87171'},
-    bordeaux:{emoji:'🍷', bg:'rgba(168,85,247,0.15)', col:'#c084fc'},
-    briks:   {emoji:'🧱', bg:'rgba(59,130,246,0.15)', col:'#60a5fa'}
+    paris:   {bg:'rgba(245,158,11,0.15)', col:'#fbbf24'},
+    lyon:    {bg:'rgba(239,68,68,0.15)', col:'#f87171'},
+    bordeaux:{bg:'rgba(168,85,247,0.15)', col:'#c084fc'},
+    briks:   {bg:'rgba(59,130,246,0.15)', col:'#60a5fa'}
   };
-  var m = map[t] || {emoji:'📍', bg:'rgba(100,116,139,0.15)', col:'#94a3b8'};
-  return {label:(team||'—'), emoji:m.emoji, bg:m.bg, col:m.col};
+  var m = map[t] || {bg:'rgba(100,116,139,0.15)', col:'#94a3b8'};
+  return {label:(team||'—'), bg:m.bg, col:m.col};
 }
 function getPotDecisions() {
   try { return JSON.parse(localStorage.getItem('pot_decisions') || '{}') || {}; } catch(e) { return {}; }
@@ -425,7 +425,7 @@ function renderPotentiels() {
     var pondDeal = (r.effPct/100);
     var dealOn = r.status === 'deal', nogoOn = r.status === 'nogo';
     body += '<tr>'
-      +'<td><span style="display:inline-flex;align-items:center;gap:5px;background:'+bu.bg+';color:'+bu.col+';padding:2px 9px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap">'+bu.emoji+' '+bu.label+'</span></td>'
+      +'<td><span style="display:inline-flex;align-items:center;gap:5px;background:'+bu.bg+';color:'+bu.col+';padding:2px 9px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap">'+bu.label+'</span></td>'
       +'<td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:6px;background-image:url(photos/'+r.uid+'.png);background-size:cover;background-position:center;background-color:#334155;flex-shrink:0"></div><span style="font-weight:600;color:#e0e7ff">'+r.consultant+'</span></div></td>'
       +'<td style="color:#cbd5e1">'+r.candidat+(r.company?'<span style="color:#64748b"> · '+r.company+'</span>':'')+'</td>'
       +'<td style="text-align:right;color:#e0e7ff;font-weight:600">'+potEur(r.ca)+'</td>'
