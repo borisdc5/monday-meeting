@@ -528,8 +528,10 @@ function renderFcastSummary(uid) {
 }
 
 function getMondayLabel() {
-  var d=new Date(), day=d.getDay(), diff=d.getDate()-day+(day===0?-6:1);
-  var m=new Date(d); m.setDate(diff);
+  // Affiche le lundi de la reunion : aujourd'hui si on est lundi, sinon le prochain lundi
+  var d=new Date(), day=d.getDay();
+  var add=(day===1)?0:((8-day)%7);
+  var m=new Date(d); m.setDate(d.getDate()+add);
   var s=m.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   return s.charAt(0).toUpperCase()+s.slice(1);
 }
