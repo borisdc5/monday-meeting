@@ -193,6 +193,7 @@
   </div>
   <div class="allboard-content">
     <div id="pot-kpis" class="stats-grid" style="grid-template-columns:repeat(4,1fr);"></div>
+    <div id="pot-filters" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"></div>
     <div class="card-section" style="padding:0;overflow:hidden;">
       <div style="overflow-x:auto;">
         <table id="pot-table" class="ranking-table" style="margin-top:0;"></table>
@@ -277,11 +278,13 @@ function switchPage(page) {
 
 // ---- POTENTIELS ----
 function potEur(n) { return '€' + Number(n||0).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function potTypeMeta(pct) {
-  if(pct >= 100) return {label:'Deal', bg:'rgba(16,185,129,0.15)', col:'#10b981'};
-  if(pct <= 0)   return {label:'Nogo', bg:'rgba(239,68,68,0.15)', col:'#ef4444'};
+function statusMeta(st) {
+  if(st === 'deal') return {label:'Deal', bg:'rgba(16,185,129,0.15)', col:'#10b981'};
+  if(st === 'nogo') return {label:'Nogo', bg:'rgba(239,68,68,0.15)', col:'#ef4444'};
   return {label:'Potentiel', bg:'rgba(99,102,241,0.18)', col:'#a5b4fc'};
 }
+// derived status from the announced index, before any manual decision
+function derivedStatus(pct) { return pct >= 100 ? 'deal' : (pct <= 0 ? 'nogo' : 'potentiel'); }
 function buMeta(team) {
   var t = (team||'').toLowerCase();
   var map = {
@@ -297,12 +300,34 @@ function getPotDecisions() {
   try { return JSON.parse(localStorage.getItem('pot_decisions') || '{}') || {}; } catch(e) { return {}; }
 }
 function savePotDecisions(d) { try { localStorage.setItem('pot_decisions', JSON.stringify(d)); } catch(e){} }
+function potStatus(r, decisions) {
+  return decisions[r.key] || derivedStatus(r.pct);
+}
 function potDecide(idx, decision) {
   var r = POT_ROWS[idx];
   if(!r) return;
   var d = getPotDecisions();
-  d[r.key] = decision;
+  if(d[r.key] === decision) delete d[r.key]; // toggle off -> revert to announced status
+  else d[r.key] = decision;
   savePotDecisions(d);
+  renderPotentiels();
+}
+// display filter (which statuses are shown). Default: potentiels only.
+var POT_FILTER = null;
+function getPotFilter() {
+  if(POT_FILTER) return POT_FILTER;
+  try {
+    var s = JSON.parse(localStorage.getItem('pot_filter'));
+    if(s && typeof s.potentiel === 'boolean') { POT_FILTER = s; return POT_FILTER; }
+  } catch(e){}
+  POT_FILTER = {potentiel:true, deal:false, nogo:false};
+  return POT_FILTER;
+}
+function togglePotFilter(key) {
+  var f = getPotFilter();
+  f[key] = !f[key];
+  POT_FILTER = f;
+  try { localStorage.setItem('pot_filter', JSON.stringify(f)); } catch(e){}
   renderPotentiels();
 }
 function collectPotentiels() {
@@ -331,28 +356,53 @@ var POT_ROWS = [];
 function renderPotentiels() {
   var all = collectPotentiels();
   var decisions = getPotDecisions();
+  var filter = getPotFilter();
 
-  // validated deals (decided "deal") count toward the KPI
-  var nbDeal = 0;
-  all.forEach(function(r){ if(decisions[r.key] === 'deal') nbDeal++; });
+  // resolve status + effective figures for every row
+  all.forEach(function(r){
+    r.status = potStatus(r, decisions);
+    r.effPct = r.status === 'deal' ? 100 : (r.status === 'nogo' ? 0 : r.pct);
+    r.effPond = r.status === 'deal' ? r.ca : (r.status === 'nogo' ? 0 : r.ca * r.pct / 100);
+  });
 
-  // only undecided rows stay in the table
-  var rows = all.filter(function(r){ return !decisions[r.key]; });
-  rows.sort(function(a,b){ return b.pond - a.pond; });
-  POT_ROWS = rows;
+  // counts per status (global, independent of the display filter)
+  var nbDeal = 0, nbPot = 0, nbNogo = 0;
+  all.forEach(function(r){ if(r.status==='deal') nbDeal++; else if(r.status==='nogo') nbNogo++; else nbPot++; });
 
+  // totals over everything that isn't a No go (deals count at 100%)
   var totCA = 0, totPond = 0;
-  rows.forEach(function(r){ totCA += r.ca; totPond += r.pond; });
+  all.forEach(function(r){ if(r.status!=='nogo'){ totCA += r.ca; totPond += r.effPond; } });
+
+  // rows actually displayed = those whose status is enabled in the filter
+  var rows = all.filter(function(r){ return filter[r.status]; });
+  rows.sort(function(a,b){ return b.effPond - a.effPond; });
+  POT_ROWS = rows;
 
   var kpis = document.getElementById('pot-kpis');
   kpis.innerHTML =
-    '<div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">Potentiels en attente</div><div class="stat-value">'+rows.length+'</div></div>'
+    '<div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">Potentiels en attente</div><div class="stat-value">'+nbPot+'</div></div>'
    +'<div class="stat-card"><div class="stat-icon">💶</div><div class="stat-label">CA prévu total</div><div class="stat-value">'+potEur(totCA)+'</div></div>'
    +'<div class="stat-card"><div class="stat-icon">⚖️</div><div class="stat-label">CA pondéré total</div><div class="stat-value" style="color:#10b981">'+potEur(totPond)+'</div></div>'
    +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Deals (100%)</div><div class="stat-value" style="color:#10b981">'+nbDeal+'</div></div>';
 
+  // filter chips
+  var chips = document.getElementById('pot-filters');
+  if(chips) {
+    var def = [
+      {key:'potentiel', label:'Potentiels', n:nbPot, col:'#a5b4fc', bg:'rgba(99,102,241,0.18)'},
+      {key:'deal', label:'Deals', n:nbDeal, col:'#10b981', bg:'rgba(16,185,129,0.15)'},
+      {key:'nogo', label:'No go', n:nbNogo, col:'#ef4444', bg:'rgba(239,68,68,0.12)'}
+    ];
+    chips.innerHTML = '<span style="font-size:11px;color:#64748b;margin-right:2px">Afficher :</span>' + def.map(function(c){
+      var on = !!filter[c.key];
+      return '<button onclick="togglePotFilter(\''+c.key+'\')" style="cursor:pointer;font-size:12px;font-weight:600;padding:4px 12px;border-radius:8px;'
+        +(on ? 'background:'+c.bg+';color:'+c.col+';border:1px solid '+c.col : 'background:transparent;color:#64748b;border:1px solid #334155')+'">'
+        +c.label+' <span style="opacity:0.8">'+c.n+'</span></button>';
+    }).join('');
+  }
+
   var st = document.getElementById('pot-status');
-  if(st) st.textContent = rows.length ? (rows.length + ' en attente · ' + nbDeal + ' deal(s) validé(s)') : (nbDeal + ' deal(s) validé(s)');
+  if(st) st.textContent = nbPot + ' potentiel(s) · ' + nbDeal + ' deal(s) · ' + nbNogo + ' no go';
 
   var tbl = document.getElementById('pot-table');
   var head = '<thead><tr>'
@@ -363,7 +413,7 @@ function renderPotentiels() {
 
   if(!rows.length) {
     tbl.innerHTML = head + '<tbody><tr><td colspan="9" style="text-align:center;color:#64748b;padding:40px 8px;">'
-      + (nbDeal ? 'Tous les potentiels ont été traités. 🎉' : 'Aucun potentiel annoncé pour le moment.')
+      + (all.length ? 'Aucune ligne pour ce filtre.' : 'Aucun potentiel annoncé pour le moment.')
       + '<br><span style="font-size:11px;">Les potentiels saisis dans la page Monday Meeting (section Forecast) apparaîtront ici.</span></td></tr></tbody>';
     return;
   }
@@ -371,28 +421,29 @@ function renderPotentiels() {
   var body = '<tbody>';
   rows.forEach(function(r, idx){
     var bu = buMeta(r.team);
-    var tp = potTypeMeta(r.pct);
-    var pondDeal = (r.pct/100);
+    var sm = statusMeta(r.status);
+    var pondDeal = (r.effPct/100);
+    var dealOn = r.status === 'deal', nogoOn = r.status === 'nogo';
     body += '<tr>'
       +'<td><span style="display:inline-flex;align-items:center;gap:5px;background:'+bu.bg+';color:'+bu.col+';padding:2px 9px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap">'+bu.emoji+' '+bu.label+'</span></td>'
       +'<td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:6px;background-image:url(photos/'+r.uid+'.png);background-size:cover;background-position:center;background-color:#334155;flex-shrink:0"></div><span style="font-weight:600;color:#e0e7ff">'+r.consultant+'</span></div></td>'
       +'<td style="color:#cbd5e1">'+r.candidat+(r.company?'<span style="color:#64748b"> · '+r.company+'</span>':'')+'</td>'
       +'<td style="text-align:right;color:#e0e7ff;font-weight:600">'+potEur(r.ca)+'</td>'
-      +'<td style="text-align:right;color:'+tp.col+';font-weight:600">'+r.pct+'%</td>'
+      +'<td style="text-align:right;color:'+sm.col+';font-weight:600">'+r.effPct+'%</td>'
       +'<td style="text-align:right;color:#94a3b8">'+(Number.isInteger(pondDeal)?pondDeal:pondDeal.toFixed(2))+'</td>'
-      +'<td style="text-align:right;color:#10b981;font-weight:600">'+potEur(r.pond)+'</td>'
-      +'<td><span style="background:'+tp.bg+';color:'+tp.col+';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:600">'+tp.label+'</span></td>'
+      +'<td style="text-align:right;color:#10b981;font-weight:600">'+potEur(r.effPond)+'</td>'
+      +'<td><span style="background:'+sm.bg+';color:'+sm.col+';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:600">'+sm.label+'</span></td>'
       +'<td style="text-align:right;white-space:nowrap">'
-        +'<button onclick="potDecide('+idx+',\'deal\')" title="Valider en deal" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:6px">Deal ✅</button>'
-        +'<button onclick="potDecide('+idx+',\'nogo\')" title="Marquer No go" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">No go ❌</button>'
+        +'<button onclick="potDecide('+idx+',\'deal\')" title="Marquer comme Deal" style="'+(dealOn?'background:#10b981;color:#0f1419;border:1px solid #10b981':'background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.4)')+';padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:6px">Deal ✅</button>'
+        +'<button onclick="potDecide('+idx+',\'nogo\')" title="Marquer No go" style="'+(nogoOn?'background:#ef4444;color:#0f1419;border:1px solid #ef4444':'background:rgba(239,68,68,0.10);color:#ef4444;border:1px solid rgba(239,68,68,0.4)')+';padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">No go ❌</button>'
       +'</td>'
       +'</tr>';
   });
   body += '<tr style="border-top:2px solid #334155">'
-    +'<td colspan="3" style="font-weight:700;color:#e0e7ff">TOTAL</td>'
-    +'<td style="text-align:right;font-weight:700;color:#e0e7ff">'+potEur(totCA)+'</td>'
+    +'<td colspan="3" style="font-weight:700;color:#e0e7ff">TOTAL '+(rows.length<all.length?'(affiché)':'')+'</td>'
+    +'<td style="text-align:right;font-weight:700;color:#e0e7ff">'+potEur(rows.reduce(function(s,r){return s+(r.status!=='nogo'?r.ca:0);},0))+'</td>'
     +'<td></td><td></td>'
-    +'<td style="text-align:right;font-weight:700;color:#10b981">'+potEur(totPond)+'</td>'
+    +'<td style="text-align:right;font-weight:700;color:#10b981">'+potEur(rows.reduce(function(s,r){return s+r.effPond;},0))+'</td>'
     +'<td></td><td></td></tr>';
   body += '</tbody>';
   tbl.innerHTML = head + body;
