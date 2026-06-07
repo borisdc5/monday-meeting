@@ -73,7 +73,7 @@ body.embedded .main-content { margin-left: 0; }
   <div style="padding:24px;max-width:900px;margin:0 auto">
     <div id="view">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <div id="pills" style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;max-width:calc(100% - 120px);padding-bottom:2px"></div>
+        <div id="pills" style="display:flex;gap:10px;flex-wrap:nowrap;overflow-x:auto;max-width:calc(100% - 120px);padding-bottom:4px"></div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <button onclick="prevC()" style="width:32px;height:32px;border-radius:50%;background:none;border:1px solid #334155;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8">&#8592;</button>
           <span id="counter" style="font-size:13px;color:#94a3b8"></span>
@@ -485,12 +485,19 @@ function getMondayLabel() {
 
 // PILLS + NAV
 function buildPills() {
-  var max=9, html="";
-  for(var i=0;i<Math.min(max,DATA_SUMMARY.length);i++){
-    var isA = i===gIdx;
-    html += '<div class="pill'+(isA?" active":"")+'" onclick="goTo('+i+')">'+DATA_SUMMARY[i].name.split(" ")[0]+"</div>";
+  var html="";
+  for(var i=0;i<DATA_SUMMARY.length;i++){
+    var c=DATA_SUMMARY[i];
+    var isA=i===gIdx;
+    var ring=ulGradColor(c.ulScore);
+    var first=c.name.split(" ")[0];
+    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+c.ulScore+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
+      +'<div style="width:46px;height:46px;border-radius:50%;background:'+ring+';padding:3px;box-sizing:border-box'+(isA?';box-shadow:0 0 0 2px #8b5cf6,0 0 10px rgba(139,92,246,0.6)':'')+'">'
+        +'<div style="width:100%;height:100%;border-radius:50%;background:'+aColor(c.uid)+';background-image:url(photos/'+c.uid+'.png);background-size:cover;background-position:center;border:2px solid #0f1419;box-sizing:border-box"></div>'
+      +'</div>'
+      +'<span style="font-size:11px;font-weight:'+(isA?700:500)+';color:'+(isA?"#a78bfa":"#cbd5e1")+';white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis;text-align:center">'+first+'</span>'
+    +'</div>';
   }
-  if(DATA_SUMMARY.length>max) html += '<span style="font-size:11px;color:#94a3b8;align-self:center;margin-left:4px">+' + (DATA_SUMMARY.length-max) + "</span>";
   g("pills").innerHTML = html;
   g("counter").textContent = (gIdx+1) + " / " + DATA_SUMMARY.length;
 }
