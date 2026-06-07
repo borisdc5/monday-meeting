@@ -29,7 +29,7 @@
     .allboard-content { padding: 24px 32px; }
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
     .stat-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 12px; padding: 16px; }
-    .stat-icon { font-size: 20px; margin-bottom: 6px; }
+    .stat-icon { font-size: 20px; margin-bottom: 6px; height: 28px; display: flex; align-items: center; }
     .stat-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
     .stat-value { font-size: 20px; font-weight: 700; color: #e0e7ff; }
     .stat-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
@@ -97,7 +97,7 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">🏆</div>
-        <div class="stat-label">Classement Annuel</div>
+        <div class="stat-label">Annuel</div>
         <div class="stat-value" id="stat-annual-deals">88</div>
         <div class="stat-sub">Deals</div>
         <div id="stat-annual-ca" style="font-size: 16px; font-weight: 700; color: #8b5cf6; margin-top: 4px;">1 084 848 €</div>
@@ -105,7 +105,7 @@
       </div>
       <div class="stat-card">
         <div class="stat-icon">📅</div>
-        <div class="stat-label">Classement Mensuel</div>
+        <div class="stat-label">Mensuel</div>
         <div class="stat-value" id="stat-monthly-deals">3</div>
         <div class="stat-sub">Deals</div>
         <div id="stat-monthly-ca" style="font-size: 16px; font-weight: 700; color: #3b82f6; margin-top: 4px;">28 600 €</div>
@@ -123,7 +123,7 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon"><img src="photos/booster-card.png" alt="Booster" style="width:38px;height:38px;object-fit:contain;display:inline-block;vertical-align:middle;"></div>
+        <div class="stat-icon"><img src="photos/booster-card.png" alt="Booster" style="width:28px;height:28px;object-fit:contain;display:inline-block;vertical-align:middle;"></div>
         <div class="stat-label">Palier Booster</div>
         <div class="stat-value" id="stat-palier-ca" style="font-size: 18px;">209 100 €</div>
         <div id="stat-palier-ring" style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#f59e0b 0deg, #f59e0b 55deg, #334155 55deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
