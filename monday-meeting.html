@@ -434,11 +434,18 @@ function updateFcastEntry(uid,idx,field,val) {
   var entries=getFcastEntries(uid,[]);
   if(entries[idx]) { entries[idx][field]=val; saveFcastEntries(uid,entries); }
 }
-function getPlanItems(uid,obj) {
-  try {
-    var s=localStorage.getItem("planitems_"+uid);
-    if(s) { var arr=JSON.parse(s); if(arr && arr.length) return arr; }
-  } catch(e){}
+// ---- Objectifs hebdo : deux listes distinctes avec bascule auto le lundi ----
+// "next" = plan pour la semaine a venir (en bas) ; "past" = objectifs de la semaine ecoulee (en haut)
+function isoWeekId(d){
+  d=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  var day=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-day);
+  var yStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  var wk=Math.ceil((((d-yStart)/86400000)+1)/7);
+  return d.getUTCFullYear()*100+wk; // ex: 202623, comparable numeriquement
+}
+function curWeekId(){ return isoWeekId(new Date()); }
+function defaultPlanItems(obj){
   return [
     {text:"Envoyer "+obj.cv+" CV",checked:false},
     {text:"Realiser "+obj.callsProsp+" calls prospect",checked:false},
@@ -448,17 +455,44 @@ function getPlanItems(uid,obj) {
     {text:"Proactif sur identification de nouveaux besoins",checked:false}
   ];
 }
-function savePlanItems(uid,items) { try { localStorage.setItem("planitems_"+uid,JSON.stringify(items)); } catch(e){} }
-function togglePlanItem(uid,idx) {
-  var obj=getObj(uid), items=getPlanItems(uid,obj);
-  if(!items[idx]) return;
-  items[idx].checked=!items[idx].checked;
-  savePlanItems(uid,items);
+function rawPlanNext(uid,obj){
+  try { var s=localStorage.getItem("plannext_"+uid); if(s){ var o=JSON.parse(s); if(o&&o.items) return o; } } catch(e){}
+  // migration depuis l'ancienne liste unique
+  try { var old=localStorage.getItem("planitems_"+uid); if(old){ var arr=JSON.parse(old); if(arr&&arr.length) return {week:curWeekId(),items:arr}; } } catch(e){}
+  return {week:curWeekId(),items:defaultPlanItems(obj)};
+}
+function savePlanNext(uid,v){ try { localStorage.setItem("plannext_"+uid,JSON.stringify(v)); } catch(e){} }
+function getPlanPast(uid){
+  try { var s=localStorage.getItem("planpast_"+uid); if(s){ var o=JSON.parse(s); if(o&&o.items) return o; } } catch(e){}
+  return {week:null,items:[]};
+}
+function savePlanPast(uid,v){ try { localStorage.setItem("planpast_"+uid,JSON.stringify(v)); } catch(e){} }
+// A appeler une fois au rendu : fait remonter le plan en "semaine passee" si la semaine a change
+function ensureWeekRollover(uid,obj){
+  var w=curWeekId();
+  var nxt=rawPlanNext(uid,obj);
+  if(nxt.week==null){ nxt.week=w; savePlanNext(uid,nxt); return; }
+  if(nxt.week<w){
+    savePlanPast(uid,{week:nxt.week,items:nxt.items}); // l'ancien plan devient "semaine passee"
+    nxt={week:w,items:[]};                              // le bas repart a vide pour la nouvelle semaine
+    savePlanNext(uid,nxt);
+  } else {
+    savePlanNext(uid,nxt); // persiste la migration eventuelle
+  }
+}
+// Mutations generiques : which = "next" (bas) ou "past" (haut)
+function planListGet(uid,obj,which){ return which==="past" ? getPlanPast(uid) : rawPlanNext(uid,obj); }
+function planListSave(uid,which,v){ if(which==="past") savePlanPast(uid,v); else savePlanNext(uid,v); }
+function togglePlanItem(uid,which,idx){
+  var obj=getObj(uid), pl=planListGet(uid,obj,which);
+  if(!pl.items[idx]) return;
+  pl.items[idx].checked=!pl.items[idx].checked;
+  planListSave(uid,which,pl);
   renderCard(gIdx);
 }
-function updatePlanItem(uid,idx,val) { var obj=getObj(uid),items=getPlanItems(uid,obj); if(items[idx]) { items[idx].text=val.trim(); savePlanItems(uid,items); } }
-function addPlanItem(uid) { var obj=getObj(uid),items=getPlanItems(uid,obj); items.push({text:"Nouvel objectif...",checked:false}); savePlanItems(uid,items); renderCard(gIdx); }
-function removePlanItem(uid,idx) { var obj=getObj(uid),items=getPlanItems(uid,obj); items.splice(idx,1); savePlanItems(uid,items); renderCard(gIdx); }
+function updatePlanItem(uid,which,idx,val){ var obj=getObj(uid),pl=planListGet(uid,obj,which); if(pl.items[idx]){ pl.items[idx].text=val.trim(); planListSave(uid,which,pl); } }
+function addPlanItem(uid,which){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.push({text:"Nouvel objectif...",checked:false}); planListSave(uid,which,pl); renderCard(gIdx); }
+function removePlanItem(uid,which,idx){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.splice(idx,1); planListSave(uid,which,pl); renderCard(gIdx); }
 function renderFcastSummary(uid) {
   var entries=getFcastEntries(uid,[]);
   var pot=0, pond=0;
@@ -598,6 +632,7 @@ function renderCard(i) {
   var finalItw = cItw.filter(function(r){ return r.stage.toLowerCase().indexOf("final")>=0; });
   var calls = c.callNA + c.callAb;
   var obj = getObj(uid);
+  ensureWeekRollover(uid,obj);
   var plan = getPlan(uid);
   var note = getNote(uid);
   var col = ulGradColor(c.ulScore);
@@ -696,7 +731,7 @@ function renderCard(i) {
 
   // Build "Objs S-1" card via DOM (so onclick works reliably)
   (function(){
-    var planItems=getPlanItems(uid,obj);
+    var planItems=getPlanPast(uid).items;
     var done=planItems.filter(function(it){return it.checked;}).length;
     var pctColor=planItems.length?(done/planItems.length>=0.8?"#10B981":done/planItems.length>=0.4?"#F59E0B":"#EF4444"):"#94a3b8";
     var box=d.querySelector("#objs-s1-"+uid);
@@ -712,7 +747,7 @@ function renderCard(i) {
       var chkEl=document.createElement("div");
       chkEl.className="chk"+(it.checked?" on":"");
       chkEl.textContent=it.checked?"v":"";
-      chkEl.addEventListener("click",(function(idx){ return function(){ togglePlanItem(uid,idx); }; })(ii));
+      chkEl.addEventListener("click",(function(idx){ return function(){ togglePlanItem(uid,"past",idx); }; })(ii));
       var lbl=document.createElement("span");
       lbl.style.cssText="font-size:12px;flex:1;color:"+(it.checked?"#94a3b8":"#cbd5e1")+";text-decoration:"+(it.checked?"line-through":"none");
       lbl.textContent=it.text;
@@ -720,6 +755,12 @@ function renderCard(i) {
       row.appendChild(lbl);
       box.appendChild(row);
     });
+    if(!planItems.length){
+      var empty=document.createElement("div");
+      empty.style.cssText="font-size:11px;color:#64748b;padding:8px 0;font-style:italic";
+      empty.textContent="Aucun objectif de la semaine precedente.";
+      box.appendChild(empty);
+    }
   })();
 
   // ---- CA + DEALS ----
@@ -838,14 +879,14 @@ function renderCard(i) {
   var planAddBtn = document.createElement("button");
   planAddBtn.style.cssText="display:flex;align-items:center;gap:4px;background:#7C3AED;color:white;border:none;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer";
   planAddBtn.textContent="+ Ajouter";
-  planAddBtn.addEventListener("click", function(){ addPlanItem(uid); });
+  planAddBtn.addEventListener("click", function(){ addPlanItem(uid,"next"); });
   planHeader.appendChild(planTitle);
   planHeader.appendChild(planAddBtn);
   planCard.appendChild(planHeader);
 
   var planGrid = document.createElement("div");
   planGrid.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:16px";
-  var planItems=getPlanItems(uid,obj);
+  var planItems=rawPlanNext(uid,obj).items;
   var planHalf=Math.ceil(planItems.length/2);
   [0,1].forEach(function(col){
     var colDiv=document.createElement("div");
@@ -859,16 +900,16 @@ function renderCard(i) {
         chk.className="chk"+(it.checked?" on":"");
         chk.style.marginTop="2px";
         chk.textContent=it.checked?"v":"";
-        chk.addEventListener("click",function(){ togglePlanItem(uid,idx); });
+        chk.addEventListener("click",function(){ togglePlanItem(uid,"next",idx); });
         var lbl=document.createElement("span");
         lbl.contentEditable="true";
         lbl.style.cssText="font-size:13px;flex:1;min-width:0;outline:none;color:"+(it.checked?"#94a3b8":"#cbd5e1")+";text-decoration:"+(it.checked?"line-through":"none");
         lbl.textContent=it.text;
-        lbl.addEventListener("blur",function(){ updatePlanItem(uid,idx,lbl.textContent); });
+        lbl.addEventListener("blur",function(){ updatePlanItem(uid,"next",idx,lbl.textContent); });
         var del=document.createElement("button");
         del.style.cssText="background:none;border:none;color:#475569;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px";
         del.innerHTML="&times;";
-        del.addEventListener("click",function(){ removePlanItem(uid,idx); });
+        del.addEventListener("click",function(){ removePlanItem(uid,"next",idx); });
         row.appendChild(chk);
         row.appendChild(lbl);
         row.appendChild(del);
