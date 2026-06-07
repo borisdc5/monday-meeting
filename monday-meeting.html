@@ -121,7 +121,6 @@ body.embedded .main-content { margin-left: 0; }
 <script>
 // DATA
 var DATA_SUMMARY = [
-  {name:"Boris DC",uid:"48693",nbJob:0,nbProcess:0,ulScore:0,firstItw:0,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Paris"},
   {name:"Charlie Billebeau",uid:"48771",nbJob:4,nbProcess:5,ulScore:5,firstItw:0,meeting:0,callNA:2,callAb:3,deals:0,ca:0,sem:23,ulHistory:[7.5,6.8,8.2,6.3,7.5,6.9,5.8,7.0,5.5,6.5,5.3,5.2,6.1,7.1,4.9,5.0,6.1,6.9,5.7,5.0,6.6,3.6],team:"Lyon"},
   {name:"Kim-Sian LIM",uid:"49038",nbJob:12,nbProcess:8,ulScore:10,firstItw:1,meeting:1,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[8.1,6.5,6.2,6.3,7.0,8.7,6.9,8.2,8.6,7.9,8.6,7.3,7.4,8.0,9.5,8.9,8.7,9.7,9.4,9.1,10.7,10.6],team:"Paris"},
   {name:"Gautier Lescure",uid:"52237",nbJob:6,nbProcess:20,ulScore:16,firstItw:3,meeting:0,callNA:4,callAb:0,deals:1,ca:11600,sem:23,ulHistory:[9.2,10.5,10.6,12.0,11.8,10.8,13.2,10.9,12.0,13.3,11.8,13.1,12.0,14.2,14.8,14.5,15.7,14.3,15.7,15.7,16.0,15.9],team:"Paris"},
@@ -961,6 +960,7 @@ function mergeSummary(rows) {
   for (var r = hdr + 1; r < rows.length; r++) {
     var uid = cv(rows[r], 1), name = cv(rows[r], 0);
     if (!uid || !name) continue;
+    if (uid === "48693") continue; // Boris DC exclu
     var c = DATA_SUMMARY.find(function(x){ return x.uid === uid; });
     if (!c) { c = { name: name, uid: uid, ulHistory: [], team: "" }; DATA_SUMMARY.push(c); }
     c.name      = name;
