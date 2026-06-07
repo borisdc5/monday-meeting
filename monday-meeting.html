@@ -429,9 +429,24 @@ var UL_HISTORY_SEED = {
   "120906":[0,0,0,2,0,0,0,2,0,2,2,2,7,0,0,1,4,0,1,0,0.5,1,0]
 };
 function getUlHist(uid){
-  try{ var s=localStorage.getItem("ulhist_"+uid); if(s){ var o=JSON.parse(s); if(o&&o.scores&&o.scores.length) return o; } }catch(e){}
-  if(UL_HISTORY_SEED[uid]) return { start: UL_HISTORY_START_WEEK, scores: UL_HISTORY_SEED[uid].slice() };
-  return null;
+  var stored=null;
+  try{ var s=localStorage.getItem("ulhist_"+uid); if(s){ var o=JSON.parse(s); if(o&&o.scores&&o.scores.length) stored=o; } }catch(e){}
+  var seed=UL_HISTORY_SEED[uid];
+  if(seed){
+    // Le seed est la verite historique. On part toujours du seed, et on ne
+    // conserve du localStorage que les semaines qui depassent le seed (futur).
+    var base={ start: UL_HISTORY_START_WEEK, scores: seed.slice() };
+    if(stored){
+      var seedLast=base.start + base.scores.length - 1;
+      var storedLast=stored.start + stored.scores.length - 1;
+      for(var wk=seedLast+1; wk<=storedLast; wk++){
+        var idx=wk - stored.start;
+        if(idx>=0 && idx<stored.scores.length) base.scores.push(stored.scores[idx]);
+      }
+    }
+    return base;
+  }
+  return stored;
 }
 function saveUlHist(uid,o){ try{ localStorage.setItem("ulhist_"+uid,JSON.stringify(o)); }catch(e){} }
 function ensureUlHistory(c){
