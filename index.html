@@ -293,6 +293,18 @@ function buMeta(team) {
   var m = map[t] || {emoji:'📍', bg:'rgba(100,116,139,0.15)', col:'#94a3b8'};
   return {label:(team||'—'), emoji:m.emoji, bg:m.bg, col:m.col};
 }
+function getPotDecisions() {
+  try { return JSON.parse(localStorage.getItem('pot_decisions') || '{}') || {}; } catch(e) { return {}; }
+}
+function savePotDecisions(d) { try { localStorage.setItem('pot_decisions', JSON.stringify(d)); } catch(e){} }
+function potDecide(idx, decision) {
+  var r = POT_ROWS[idx];
+  if(!r) return;
+  var d = getPotDecisions();
+  d[r.key] = decision;
+  savePotDecisions(d);
+  renderPotentiels();
+}
 function collectPotentiels() {
   var rows = [];
   for(var i=0;i<DATA_SUMMARY.length;i++){
@@ -303,49 +315,61 @@ function collectPotentiels() {
     var entries;
     try { entries = JSON.parse(raw); } catch(e) { continue; }
     if(!entries || !entries.length) continue;
-    entries.forEach(function(e){
+    entries.forEach(function(e, ei){
       var ca = Number(e.ca)||0, pct = Number(e.pct)||0;
       rows.push({
         team: c.team, consultant: c.name, uid: c.uid,
         candidat: e.candidat || '—', company: e.company || '',
-        ca: ca, pct: pct, pond: ca * pct / 100
+        ca: ca, pct: pct, pond: ca * pct / 100,
+        key: c.uid + '|' + ei + '|' + (e.candidat || '')
       });
     });
   }
   return rows;
 }
+var POT_ROWS = [];
 function renderPotentiels() {
-  var rows = collectPotentiels();
-  // sort by weighted CA desc
-  rows.sort(function(a,b){ return b.pond - a.pond; });
+  var all = collectPotentiels();
+  var decisions = getPotDecisions();
 
-  var totCA = 0, totPond = 0, nbDeal = 0;
-  rows.forEach(function(r){ totCA += r.ca; totPond += r.pond; if(r.pct>=100) nbDeal++; });
+  // validated deals (decided "deal") count toward the KPI
+  var nbDeal = 0;
+  all.forEach(function(r){ if(decisions[r.key] === 'deal') nbDeal++; });
+
+  // only undecided rows stay in the table
+  var rows = all.filter(function(r){ return !decisions[r.key]; });
+  rows.sort(function(a,b){ return b.pond - a.pond; });
+  POT_ROWS = rows;
+
+  var totCA = 0, totPond = 0;
+  rows.forEach(function(r){ totCA += r.ca; totPond += r.pond; });
 
   var kpis = document.getElementById('pot-kpis');
   kpis.innerHTML =
-    '<div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">Potentiels annoncés</div><div class="stat-value">'+rows.length+'</div></div>'
+    '<div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">Potentiels en attente</div><div class="stat-value">'+rows.length+'</div></div>'
    +'<div class="stat-card"><div class="stat-icon">💶</div><div class="stat-label">CA prévu total</div><div class="stat-value">'+potEur(totCA)+'</div></div>'
    +'<div class="stat-card"><div class="stat-icon">⚖️</div><div class="stat-label">CA pondéré total</div><div class="stat-value" style="color:#10b981">'+potEur(totPond)+'</div></div>'
-   +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Deals (100%)</div><div class="stat-value">'+nbDeal+'</div></div>';
+   +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Deals (100%)</div><div class="stat-value" style="color:#10b981">'+nbDeal+'</div></div>';
 
   var st = document.getElementById('pot-status');
-  if(st) st.textContent = rows.length ? (rows.length + ' lignes') : '';
+  if(st) st.textContent = rows.length ? (rows.length + ' en attente · ' + nbDeal + ' deal(s) validé(s)') : (nbDeal + ' deal(s) validé(s)');
 
   var tbl = document.getElementById('pot-table');
   var head = '<thead><tr>'
     +'<th>BU</th><th>Consultant</th><th>Candidat</th>'
     +'<th style="text-align:right">CA prévu</th><th style="text-align:right">Indice</th>'
     +'<th style="text-align:right">Deal pondéré</th><th style="text-align:right">CA pondéré</th>'
-    +'<th>Type</th></tr></thead>';
+    +'<th>Type</th><th style="text-align:right">Action</th></tr></thead>';
 
   if(!rows.length) {
-    tbl.innerHTML = head + '<tbody><tr><td colspan="8" style="text-align:center;color:#64748b;padding:40px 8px;">Aucun potentiel annoncé pour le moment.<br><span style="font-size:11px;">Les potentiels saisis dans la page Monday Meeting (section Forecast) apparaîtront ici.</span></td></tr></tbody>';
+    tbl.innerHTML = head + '<tbody><tr><td colspan="9" style="text-align:center;color:#64748b;padding:40px 8px;">'
+      + (nbDeal ? 'Tous les potentiels ont été traités. 🎉' : 'Aucun potentiel annoncé pour le moment.')
+      + '<br><span style="font-size:11px;">Les potentiels saisis dans la page Monday Meeting (section Forecast) apparaîtront ici.</span></td></tr></tbody>';
     return;
   }
 
   var body = '<tbody>';
-  rows.forEach(function(r){
+  rows.forEach(function(r, idx){
     var bu = buMeta(r.team);
     var tp = potTypeMeta(r.pct);
     var pondDeal = (r.pct/100);
@@ -358,6 +382,10 @@ function renderPotentiels() {
       +'<td style="text-align:right;color:#94a3b8">'+(Number.isInteger(pondDeal)?pondDeal:pondDeal.toFixed(2))+'</td>'
       +'<td style="text-align:right;color:#10b981;font-weight:600">'+potEur(r.pond)+'</td>'
       +'<td><span style="background:'+tp.bg+';color:'+tp.col+';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:600">'+tp.label+'</span></td>'
+      +'<td style="text-align:right;white-space:nowrap">'
+        +'<button onclick="potDecide('+idx+',\'deal\')" title="Valider en deal" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:6px">Deal ✅</button>'
+        +'<button onclick="potDecide('+idx+',\'nogo\')" title="Marquer No go" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">No go ❌</button>'
+      +'</td>'
       +'</tr>';
   });
   body += '<tr style="border-top:2px solid #334155">'
@@ -365,7 +393,7 @@ function renderPotentiels() {
     +'<td style="text-align:right;font-weight:700;color:#e0e7ff">'+potEur(totCA)+'</td>'
     +'<td></td><td></td>'
     +'<td style="text-align:right;font-weight:700;color:#10b981">'+potEur(totPond)+'</td>'
-    +'<td></td></tr>';
+    +'<td></td><td></td></tr>';
   body += '</tbody>';
   tbl.innerHTML = head + body;
 }
