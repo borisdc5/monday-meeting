@@ -643,7 +643,7 @@ function renderCard(i) {
     procStops+='<stop offset="'+(o*100)+'%" stop-color="'+gradColor(o)+'"/>';
   });
   var procRangeBar='<svg width="'+procBarW+'" height="24" style="display:block;margin-top:10px">'
-    +'<defs><linearGradient id="'+procGradId+'" x1="0" y1="0" x2="1" y2="0">'+procStops+'</linearGradient></defs>'
+    +'<defs><linearGradient id="'+procGradId+'" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="'+procBarW+'" y2="0">'+procStops+'</linearGradient></defs>'
     +'<rect x="0" y="9" width="'+procBarW+'" height="6" rx="3" fill="#334155"/>'
     +'<rect x="0" y="9" width="'+Math.round(procPos)+'" height="6" rx="3" fill="url(#'+procGradId+')"/>';
   [0,10].forEach(function(t){
