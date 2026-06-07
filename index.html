@@ -264,7 +264,7 @@
         </div>
         <table class="ranking-table" id="production-table-container">
           <thead>
-            <tr><th>Consultant</th><th id="prod-col1">Sem</th><th id="prod-col2">Mois</th><th id="prod-col3">1st ITW</th></tr>
+            <tr><th>Consultant</th><th id="prod-col1">Sem</th><th id="prod-col2">Mois</th><th id="prod-col3">1st ITW</th><th id="prod-col4">Total ITW</th></tr>
           </thead>
           <tbody id="production-table"></tbody>
         </table>
@@ -353,8 +353,12 @@ var consultant_ids = {
   "ADEM": "52349", "AYANN": "52276", "BASILE": "52269", "BO": "48771", "BAPTISTE": "75012",
   "CAMILLE": "85643", "CHARLIE": "48771", "CO": "52257", "CYPRIENNE": "90160", "GAUTIER": "52237",
   "HUGO": "52339", "KIM-SIAN": "49038", "MARTIN": "52245", "MAXIME": "52319", "MICHAEL": "52285",
-  "MIKA": "52272", "MOLKA": "52272", "PIERRE C.": "52244", "LOUANE": "120903", "MAISSA": "120906"
+  "MIKA": "52272", "MOLKA": "52272", "PIERRE C.": "52244", "LOUANE": "120903", "MAISSA": "120906",
+  "CYPRIEN": "90160"
 };
+
+// Total des interviews (tous stades) du mois en cours, par User ID
+var itw_month = {};
 
 function getScoreColor(score) {
   if(score >= 20) return 'color-green';
@@ -590,10 +594,13 @@ function renderProduction(tab) {
   var html = '';
   for(var i = 0; i < rows.length; i++) {
     var name = rows[i][0], sem = rows[i][1], mois = rows[i][2], itw = rows[i][3];
+    var uid = consultant_ids[name];
+    var totItw = (uid && itw_month[uid] != null) ? itw_month[uid] : 0;
     html += '<tr><td>' + name + '</td>'
       + '<td class="' + getScoreColor(sem) + '">' + sem.toFixed(1) + '</td>'
       + '<td class="' + getScoreColor(mois) + '">' + mois.toFixed(1) + '</td>'
-      + '<td>' + itw + '</td></tr>';
+      + '<td>' + itw + '</td>'
+      + '<td>' + totItw + '</td></tr>';
   }
   document.getElementById('production-table').innerHTML = html;
 }
@@ -616,6 +623,8 @@ function renderAllBoard() {
 
 // ---- Chargement dynamique depuis Google Sheets ----
 var SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-mR3SrdzeSVax30LCsanbAJ8v_2_2UJSBWgz6kHw5jghKCaOfxOUF68qZNieWJwxf2hT_tHdP0tX/pub?gid=2060399592&single=true&output=csv";
+// Sheet des interviews (toutes les ITW avec date) — pour le total ITW du mois
+var ITW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1643040749&single=true&output=csv";
 var REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 
 function parseCSV(text) {
@@ -716,7 +725,32 @@ function setRing(id, pct, color) {
   el.style.background = 'conic-gradient(' + color + ' 0deg, ' + color + ' ' + deg + 'deg, #1e293b ' + deg + 'deg)';
 }
 
+function rebuildItwMonth(rows) {
+  var now = new Date();
+  var mm = now.getMonth() + 1, yy = now.getFullYear();
+  var counts = {};
+  for (var r = 1; r < rows.length; r++) {
+    var uid = cell(rows, r, 0);
+    var date = cell(rows, r, 8); // DD/MM/YYYY
+    if (!uid || !date) continue;
+    var parts = date.split('/');
+    if (parts.length !== 3) continue;
+    if (parseInt(parts[1], 10) === mm && parseInt(parts[2], 10) === yy) {
+      counts[uid] = (counts[uid] || 0) + 1;
+    }
+  }
+  if (Object.keys(counts).length) itw_month = counts;
+}
+
+function loadItwData() {
+  return fetch(ITW_CSV_URL, { cache: 'no-store' })
+    .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+    .then(function(text){ rebuildItwMonth(parseCSV(text)); renderProduction(currentProdTab); })
+    .catch(function(err){ console.error('Echec chargement ITW:', err); });
+}
+
 function loadData() {
+  loadItwData();
   fetch(SHEET_CSV_URL, { cache: 'no-store' })
     .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
     .then(function(text){
