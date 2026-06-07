@@ -895,15 +895,113 @@ function attachNav(){
   });
 }
 
+// ---- Chargement dynamique depuis Google Sheets ----
+var MM_URLS = {
+  summary: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1583361967&single=true&output=csv",
+  itw:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1643040749&single=true&output=csv",
+  jobs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=584601804&single=true&output=csv"
+};
+var MM_REFRESH_MS = 5 * 60 * 1000;
+
+function parseCSV(text) {
+  var rows = [], row = [], field = '', inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') { if (text[i+1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (ch === '\r') { /* ignore */ }
+      else field += ch;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+function cv(row, i) { return (row && row[i] != null) ? String(row[i]).trim() : ''; }
+function toInt(s) { var n = parseInt((s || '').replace(/[^0-9-]/g, ''), 10); return isNaN(n) ? 0 : n; }
+function toScore(s) { var n = parseFloat((s || '').replace(/[^0-9,.-]/g, '').replace(',', '.')); return isNaN(n) ? 0 : n; }
+
+function findHeader(rows, col0) {
+  for (var r = 0; r < rows.length; r++) if (cv(rows[r], 0) === col0) return r;
+  return -1;
+}
+
+function mergeSummary(rows) {
+  var hdr = findHeader(rows, 'Consultant');
+  if (hdr === -1) return;
+  for (var r = hdr + 1; r < rows.length; r++) {
+    var uid = cv(rows[r], 1), name = cv(rows[r], 0);
+    if (!uid || !name) continue;
+    var c = DATA_SUMMARY.find(function(x){ return x.uid === uid; });
+    if (!c) { c = { name: name, uid: uid, ulHistory: [], team: "" }; DATA_SUMMARY.push(c); }
+    c.name      = name;
+    c.nbJob     = toInt(cv(rows[r], 2));
+    c.nbProcess = toInt(cv(rows[r], 5));
+    c.ulScore   = toScore(cv(rows[r], 6));
+    c.firstItw  = toInt(cv(rows[r], 7));
+    c.meeting   = toInt(cv(rows[r], 8));
+    c.callNA    = toInt(cv(rows[r], 9));
+    c.callAb    = toInt(cv(rows[r], 10));
+    c.deals     = toInt(cv(rows[r], 11));
+    c.ca        = toInt(cv(rows[r], 12));
+    c.sem       = toInt(cv(rows[r], 13));
+    // garde l'historique en base; cale le dernier point sur le score courant
+    if (c.ulHistory && c.ulHistory.length) c.ulHistory[c.ulHistory.length - 1] = c.ulScore;
+    else c.ulHistory = [c.ulScore];
+  }
+}
+function buildItw(rows) {
+  var hdr = findHeader(rows, 'User ID'); if (hdr === -1) hdr = 0;
+  var out = [];
+  for (var r = hdr + 1; r < rows.length; r++) {
+    var uid = cv(rows[r], 0); if (!uid) continue;
+    out.push({ uid: uid, slug: cv(rows[r], 4), candidat: cv(rows[r], 6), stage: cv(rows[r], 7) });
+  }
+  return out;
+}
+function buildJobs(rows) {
+  var hdr = findHeader(rows, 'User ID'); if (hdr === -1) hdr = 0;
+  var out = [];
+  for (var r = hdr + 1; r < rows.length; r++) {
+    var uid = cv(rows[r], 0); if (!uid) continue;
+    out.push({ uid: uid, job: cv(rows[r], 5), client: cv(rows[r], 3), slug: cv(rows[r], 4) });
+  }
+  return out;
+}
+
+function loadMondayData() {
+  Promise.all([
+    fetch(MM_URLS.summary, { cache: 'no-store' }).then(function(r){ return r.text(); }),
+    fetch(MM_URLS.itw,     { cache: 'no-store' }).then(function(r){ return r.text(); }),
+    fetch(MM_URLS.jobs,    { cache: 'no-store' }).then(function(r){ return r.text(); })
+  ]).then(function(texts){
+    mergeSummary(parseCSV(texts[0]));
+    DATA_ITW  = buildItw(parseCSV(texts[1]));
+    DATA_JOBS = buildJobs(parseCSV(texts[2]));
+    buildPills();
+    renderCard(gIdx);
+    g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString();
+  }).catch(function(err){
+    console.error("Echec chargement Monday Meeting:", err);
+    g("data-status").textContent = "Hors ligne — données en cache";
+  });
+}
+
 // INIT
 document.addEventListener("DOMContentLoaded", function(){
   try{
     buildNav();
     attachNav();
     g("top-date").textContent=getMondayLabel();
-    g("data-status").textContent="Semaine 23 - Donnees integrees";
+    g("data-status").textContent="Chargement…";
     buildPills();
     renderCard(0);
+    loadMondayData();
+    setInterval(loadMondayData, MM_REFRESH_MS);
   } catch(err) {
     document.body.innerHTML="<pre style='color:red;padding:20px;font-size:14px'>"+err.name+": "+err.message+"\n\n"+err.stack+"</pre>";
     console.error(err);
