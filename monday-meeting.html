@@ -379,7 +379,7 @@ function gradColor(r) {
   var ch = function(k){ return Math.round(a[k] + (b[k]-a[k])*t); };
   return "rgb(" + ch(0) + "," + ch(1) + "," + ch(2) + ")";
 }
-function procGradColor(n) { return gradColor(n / 15); }
+function procGradColor(n) { return gradColor(n / 20); }
 function ulGradColor(s) { return gradColor(s / 30); }
 function actColor(v,lo,hi) { return v>=hi?"#10B981":v>=lo?"#F59E0B":"#EF4444"; }
 function fmtEur(n) { return Number(n||0).toLocaleString("fr-FR") + " EUR"; }
@@ -633,26 +633,26 @@ function renderCard(i) {
   var procCol=procGradColor(c.nbProcess);
   var procBadgeCls=c.nbProcess>=9?"badge-green":c.nbProcess>=5?"badge-orange":"badge-red";
   var procBadgeLbl=c.nbProcess>=9?"Bon rythme":c.nbProcess>=5?"A suivre":"A surveiller";
-  // Build process range bar (axis 0-5-10+, color gradient maxing at 15+)
-  var procMax=10;
+  // Build process range bar (axis 0-10-20+, color gradient maxing fluo green at 20+)
+  var procMax=20;
   var procBarW=160;
   var procPos=Math.min(c.nbProcess,procMax)/procMax*procBarW;
   var procGradId='pg'+uid;
   var procStops='';
   [0,0.25,0.5,0.75,1].forEach(function(o){
-    procStops+='<stop offset="'+(o*100)+'%" stop-color="'+gradColor(o*procMax/15)+'"/>';
+    procStops+='<stop offset="'+(o*100)+'%" stop-color="'+gradColor(o)+'"/>';
   });
   var procRangeBar='<svg width="'+procBarW+'" height="24" style="display:block;margin-top:10px">'
     +'<defs><linearGradient id="'+procGradId+'" x1="0" y1="0" x2="1" y2="0">'+procStops+'</linearGradient></defs>'
     +'<rect x="0" y="9" width="'+procBarW+'" height="6" rx="3" fill="#334155"/>'
     +'<rect x="0" y="9" width="'+Math.round(procPos)+'" height="6" rx="3" fill="url(#'+procGradId+')"/>';
-  [0,5].forEach(function(t){
+  [0,10].forEach(function(t){
     var x=Math.round(t/procMax*procBarW);
     procRangeBar+='<line x1="'+x+'" y1="7" x2="'+x+'" y2="17" stroke="#94a3b8" stroke-width="1"/>';
     procRangeBar+='<text x="'+x+'" y="24" text-anchor="middle" font-size="9" fill="#94a3b8">'+t+'</text>';
   });
   procRangeBar+='<line x1="'+procBarW+'" y1="7" x2="'+procBarW+'" y2="17" stroke="#94a3b8" stroke-width="1"/>';
-  procRangeBar+='<text x="'+(procBarW)+'" y="24" text-anchor="end" font-size="9" fill="#94a3b8">10+</text>';
+  procRangeBar+='<text x="'+(procBarW)+'" y="24" text-anchor="end" font-size="9" fill="#94a3b8">20+</text>';
   procRangeBar+='</svg>';
 
   // Build UL sparkline (all weeks Sem.1 → Sem.prevSem)
