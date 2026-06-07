@@ -33,6 +33,25 @@
     .stat-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
     .stat-value { font-size: 20px; font-weight: 700; color: #e0e7ff; }
     .stat-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+    /* AllBoard premium KPI cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 32px; }
+    .kpi-card { position: relative; border-radius: 18px; padding: 22px; border: 1px solid rgba(148,163,184,0.14); overflow: hidden; min-height: 210px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+    .kpi-card .kpi-watermark { position: absolute; right: -14px; top: -6px; font-size: 130px; line-height: 1; opacity: 0.07; pointer-events: none; filter: grayscale(0.2); }
+    .kpi-card .kpi-watermark img { width: 130px; height: 130px; object-fit: contain; }
+    .kpi-head { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; position: relative; z-index: 1; }
+    .kpi-badge { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 21px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+    .kpi-badge img { width: 26px; height: 26px; object-fit: contain; }
+    .kpi-label { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #cbd5e1; }
+    .kpi-value { font-size: 34px; font-weight: 800; color: #ffffff; line-height: 1; position: relative; z-index: 1; }
+    .kpi-subtxt { font-size: 12px; color: #94a3b8; margin-top: 6px; position: relative; z-index: 1; }
+    .kpi-divider { border: none; border-top: 1px dashed rgba(148,163,184,0.22); margin: 18px 0 14px; position: relative; z-index: 1; }
+    .kpi-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: relative; z-index: 1; }
+    .kpi-ca { font-size: 22px; font-weight: 800; line-height: 1.1; text-align: right; }
+    .kpi-ca-lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; text-align: right; }
+    .kpi-ring { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
+    .kpi-ring-inner { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #0d1320; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+    .kpi-reste-lbl { font-size: 11px; color: #94a3b8; text-align: right; }
+    .kpi-reste-val { font-size: 18px; font-weight: 700; color: #e2e8f0; text-align: right; margin-top: 2px; }
 
     .content-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 32px; }
     .card-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 12px; padding: 20px; }
@@ -94,42 +113,90 @@
     <div id="data-status" style="font-size:12px;color:#64748b;">Chargement…</div>
   </div>
   <div class="allboard-content">
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">🏆</div>
-        <div class="stat-label">Annuel</div>
-        <div class="stat-value" id="stat-annual-deals">88</div>
-        <div class="stat-sub">Deals</div>
-        <div id="stat-annual-ca" style="font-size: 16px; font-weight: 700; color: #8b5cf6; margin-top: 4px;">1 084 848 €</div>
-        <div class="stat-sub">CA</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">📅</div>
-        <div class="stat-label">Mensuel</div>
-        <div class="stat-value" id="stat-monthly-deals">3</div>
-        <div class="stat-sub">Deals</div>
-        <div id="stat-monthly-ca" style="font-size: 16px; font-weight: 700; color: #3b82f6; margin-top: 4px;">28 600 €</div>
-        <div class="stat-sub">CA</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🎯</div>
-        <div class="stat-label">Objectif CA</div>
-        <div class="stat-value" id="stat-obj-ca" style="font-size: 18px;">246 000 €</div>
-        <div id="stat-obj-ring" style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#10b981 0deg, #10b981 47deg, #334155 47deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
-          <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: #0f172a; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
-            <div id="stat-obj-pct" style="font-size: 11px; font-weight: 700; color: #10b981;">11,63%</div>
-            <div style="font-size: 8px; color: #94a3b8;">Atteinte</div>
+    <div class="kpi-grid">
+      <!-- ANNUEL -->
+      <div class="kpi-card" style="background: radial-gradient(120% 120% at 100% 0%, rgba(139,92,246,0.22) 0%, rgba(139,92,246,0.04) 45%, #11131f 100%);">
+        <div class="kpi-watermark">🏆</div>
+        <div class="kpi-head">
+          <div class="kpi-badge" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">🏆</div>
+          <div class="kpi-label">Annuel</div>
+        </div>
+        <div class="kpi-value" id="stat-annual-deals">88</div>
+        <div class="kpi-subtxt">Deals</div>
+        <hr class="kpi-divider">
+        <div class="kpi-foot">
+          <svg width="92" height="40" viewBox="0 0 92 40" fill="none">
+            <polyline points="2,34 14,28 26,30 38,20 50,22 62,12 74,14 88,4" stroke="#a78bfa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="88" cy="4" r="3.2" fill="#a78bfa"/>
+          </svg>
+          <div>
+            <div class="kpi-ca" id="stat-annual-ca" style="color:#a78bfa;">1 084 848 €</div>
+            <div class="kpi-ca-lbl">CA total</div>
           </div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon"><img src="photos/booster-card.png" alt="Booster" style="width:28px;height:28px;object-fit:contain;display:inline-block;vertical-align:middle;"></div>
-        <div class="stat-label">Palier Booster</div>
-        <div class="stat-value" id="stat-palier-ca" style="font-size: 18px;">209 100 €</div>
-        <div id="stat-palier-ring" style="width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#f59e0b 0deg, #f59e0b 55deg, #334155 55deg); margin: 6px auto 0; display: flex; align-items: center; justify-content: center; position: relative;">
-          <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: #0f172a; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
-            <div id="stat-palier-pct" style="font-size: 11px; font-weight: 700; color: #f59e0b;">13,68%</div>
-            <div style="font-size: 8px; color: #94a3b8;">Atteinte</div>
+      <!-- MENSUEL -->
+      <div class="kpi-card" style="background: radial-gradient(120% 120% at 100% 0%, rgba(59,130,246,0.22) 0%, rgba(59,130,246,0.04) 45%, #11131f 100%);">
+        <div class="kpi-watermark">📅</div>
+        <div class="kpi-head">
+          <div class="kpi-badge" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">📅</div>
+          <div class="kpi-label">Mensuel</div>
+        </div>
+        <div class="kpi-value" id="stat-monthly-deals">3</div>
+        <div class="kpi-subtxt">Deals</div>
+        <hr class="kpi-divider">
+        <div class="kpi-foot">
+          <svg width="92" height="40" viewBox="0 0 92 40" fill="none">
+            <polyline points="2,30 14,32 26,24 38,26 50,18 62,20 74,12 88,8" stroke="#60a5fa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="88" cy="8" r="3.2" fill="#60a5fa"/>
+          </svg>
+          <div>
+            <div class="kpi-ca" id="stat-monthly-ca" style="color:#60a5fa;">28 600 €</div>
+            <div class="kpi-ca-lbl">CA total</div>
+          </div>
+        </div>
+      </div>
+      <!-- OBJECTIF CA -->
+      <div class="kpi-card" style="background: radial-gradient(120% 120% at 100% 0%, rgba(16,185,129,0.22) 0%, rgba(16,185,129,0.04) 45%, #11131f 100%);">
+        <div class="kpi-watermark">🎯</div>
+        <div class="kpi-head">
+          <div class="kpi-badge" style="background: linear-gradient(135deg, #10b981, #047857);">🎯</div>
+          <div class="kpi-label">Objectif CA</div>
+        </div>
+        <div class="kpi-value" id="stat-obj-ca">246 000 €</div>
+        <hr class="kpi-divider">
+        <div class="kpi-foot">
+          <div class="kpi-ring" id="stat-obj-ring" style="background: conic-gradient(#10b981 0deg, #10b981 42deg, #1e293b 42deg);">
+            <div class="kpi-ring-inner">
+              <div id="stat-obj-pct" style="font-size: 13px; font-weight: 800; color: #10b981;">11,63%</div>
+              <div style="font-size: 9px; color: #94a3b8;">Atteinte</div>
+            </div>
+          </div>
+          <div>
+            <div class="kpi-reste-lbl">Reste à atteindre</div>
+            <div class="kpi-reste-val" id="stat-obj-reste">217 400 €</div>
+          </div>
+        </div>
+      </div>
+      <!-- PALIER BOOSTER -->
+      <div class="kpi-card" style="background: radial-gradient(120% 120% at 100% 0%, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.04) 45%, #11131f 100%);">
+        <div class="kpi-watermark"><img src="photos/booster-card.png" alt=""></div>
+        <div class="kpi-head">
+          <div class="kpi-badge" style="background: linear-gradient(135deg, #f59e0b, #b45309);"><img src="photos/booster-card.png" alt="Booster"></div>
+          <div class="kpi-label">Palier Booster</div>
+        </div>
+        <div class="kpi-value" id="stat-palier-ca">209 100 €</div>
+        <hr class="kpi-divider">
+        <div class="kpi-foot">
+          <div class="kpi-ring" id="stat-palier-ring" style="background: conic-gradient(#f59e0b 0deg, #f59e0b 49deg, #1e293b 49deg);">
+            <div class="kpi-ring-inner">
+              <div id="stat-palier-pct" style="font-size: 13px; font-weight: 800; color: #f59e0b;">13,68%</div>
+              <div style="font-size: 9px; color: #94a3b8;">Atteinte</div>
+            </div>
+          </div>
+          <div>
+            <div class="kpi-reste-lbl">Reste à atteindre</div>
+            <div class="kpi-reste-val" id="stat-palier-reste">180 500 €</div>
           </div>
         </div>
       </div>
@@ -591,13 +658,16 @@ function rebuildFromCSV(rows) {
     setText('stat-annual-ca', formatEuro(parseEuro(cell(rows, val, 4))));
     setText('stat-monthly-deals', cell(rows, val, 9));
     setText('stat-monthly-ca', formatEuro(parseEuro(cell(rows, val, 11))));
-    setText('stat-obj-ca', formatEuro(parseEuro(cell(rows, lbl, 17))));
-    setText('stat-palier-ca', formatEuro(parseEuro(cell(rows, lbl, 22))));
+    var objTarget = parseEuro(cell(rows, lbl, 17)), palTarget = parseEuro(cell(rows, lbl, 22));
+    setText('stat-obj-ca', formatEuro(objTarget));
+    setText('stat-palier-ca', formatEuro(palTarget));
     var objPct = cell(rows, val, 17), palPct = cell(rows, val, 22);
     setText('stat-obj-pct', objPct);
     setText('stat-palier-pct', palPct);
     setRing('stat-obj-ring', parseScore(objPct), '#10b981');
     setRing('stat-palier-ring', parseScore(palPct), '#f59e0b');
+    setText('stat-obj-reste', formatEuro(Math.max(0, Math.round(objTarget * (1 - parseScore(objPct)/100)))));
+    setText('stat-palier-reste', formatEuro(Math.max(0, Math.round(palTarget * (1 - parseScore(palPct)/100)))));
   }
 }
 
@@ -606,7 +676,7 @@ function formatEuro(n) { return n.toLocaleString() + ' €'; }
 function setRing(id, pct, color) {
   var el = document.getElementById(id); if (!el) return;
   var deg = Math.max(0, Math.min(100, pct)) / 100 * 360;
-  el.style.background = 'conic-gradient(' + color + ' 0deg, ' + color + ' ' + deg + 'deg, #334155 ' + deg + 'deg)';
+  el.style.background = 'conic-gradient(' + color + ' 0deg, ' + color + ' ' + deg + 'deg, #1e293b ' + deg + 'deg)';
 }
 
 function loadData() {
