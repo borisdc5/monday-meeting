@@ -30,7 +30,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .ttable th { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; padding: 10px 12px; background: #0f172a; text-align: left; }
 .ttable td { padding: 10px 12px; border-bottom: 1px solid #2d3748; font-size: 13px; color: #cbd5e1; }
 .ttable tr:hover td { background: #0f172a; cursor: pointer; }
-.oinput { border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 100%; outline: none; }
+.oinput { background: #0f172a; color: #e0e7ff; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 100%; outline: none; }
+.oinput::placeholder { color: #64748b; }
 .oinput:focus { border-color: #7C3AED; }
 .chk { width: 16px; height: 16px; border: 2px solid #475569; border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .chk.on { background: #7C3AED; border-color: #7C3AED; }
@@ -414,6 +415,21 @@ function getFcastEntries(uid,seedItw) {
   });
 }
 function saveFcastEntries(uid,entries) { try { localStorage.setItem("fcastentries_"+uid,JSON.stringify(entries)); } catch(e){} }
+// --- Decisions potentiels (partagees avec la page AllBoard "Potentiels") ---
+// La cle doit matcher index.html : uid + '|' + index + '|' + candidat
+function getPotDecisions() { try { return JSON.parse(localStorage.getItem("pot_decisions")||"{}")||{}; } catch(e){ return {}; } }
+function savePotDecisions(d) { try { localStorage.setItem("pot_decisions",JSON.stringify(d)); } catch(e){} }
+function fcastKey(uid,fi,candidat) { return uid+"|"+fi+"|"+(candidat||""); }
+function fcastDecide(uid,fi,candidat,decision) {
+  var key=fcastKey(uid,fi,candidat), d=getPotDecisions();
+  if(d[key]===decision) delete d[key]; else d[key]=decision; // re-clic = annule
+  savePotDecisions(d);
+  renderCard(gIdx);
+}
+function fcastRevert(uid,fi,candidat) {
+  var key=fcastKey(uid,fi,candidat), d=getPotDecisions();
+  delete d[key]; savePotDecisions(d); renderCard(gIdx);
+}
 // Ajoute automatiquement tout entretien Final ITW manquant dans le forecast,
 // sans dupliquer ni ecraser les CA/% deja saisis.
 function ensureFinalItwSeeded(uid, finalItw) {
@@ -631,7 +647,7 @@ function showTeam() {
       +"<td><span style='color:"+col+";font-weight:700'>"+c.ulScore+"</span></td>"
       +"<td>"+c.nbProcess+"</td>"
       +"<td>"+c.firstItw+"</td>"
-      +"<td>"+(c.callNA+c.callAb)+"</td>"
+      +"<td>"+c.callAb+"</td>"
       +"<td style='color:"+(c.ca>0?"#34d399":"#94a3b8")+";font-weight:"+(c.ca>0?600:400)+"'>"+ca+"</td>"
       +"<td style='color:"+(c.deals>0?"#34d399":"#94a3b8")+";font-weight:"+(c.deals>0?600:400)+"'>"+(c.deals||"-")+"</td>"
       +"<td>"+c.nbJob+"</td>"
@@ -650,7 +666,7 @@ function renderCard(i) {
   var cJobs = DATA_JOBS.filter(function(r){ return r.uid===uid; });
   var otherItw = cItw.filter(function(r){ var s=r.stage.toLowerCase(); return s.indexOf("2nd")>=0||s.indexOf("3rd")>=0||s.indexOf("4th")>=0||s.indexOf("5th")>=0||s.indexOf("final")>=0; }).length;
   var finalItw = cItw.filter(function(r){ return r.stage.toLowerCase().indexOf("final")>=0; });
-  var calls = c.callNA + c.callAb;
+  var calls = c.callAb; // uniquement les vrais Prospect Call (hors "NA" = non aboutis)
   var obj = getObj(uid);
   ensureWeekRollover(uid,obj);
   var plan = getPlan(uid);
@@ -860,10 +876,26 @@ function renderCard(i) {
   var fcastEntries=getFcastEntries(uid, finalItw);
   // Save seeded entries so addFcastEntry/removeFcastEntry can read them later
   if(!localStorage.getItem("fcastentries_"+uid)) saveFcastEntries(uid, fcastEntries);
+  var potDec=getPotDecisions();
   var initPot=0, initPond=0;
-  fcastEntries.forEach(function(e){ initPot+=e.ca; initPond+=Math.round((e.pct/100)*e.ca); });
+  fcastEntries.forEach(function(e,fi){
+    var st=potDec[fcastKey(uid,fi,e.candidat)];
+    if(st==='deal'||st==='nogo') return; // tranches -> sortis du forecast
+    initPot+=e.ca; initPond+=Math.round((e.pct/100)*e.ca);
+  });
   var forecastHtml='';
   fcastEntries.forEach(function(e,fi){
+    var candEsc=(e.candidat||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var st=potDec[fcastKey(uid,fi,e.candidat)];
+    if(st==='deal'||st==='nogo'){
+      var isDeal=st==='deal';
+      forecastHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:12px;border-radius:8px;padding:7px 10px;margin-bottom:4px;background:'+(isDeal?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.10)')+'">'
+        +'<span style="flex:1;min-width:0;overflow:hidden;color:#94a3b8;text-decoration:line-through">'+e.candidat+(e.company?' <span style="font-size:11px">@ '+e.company+'</span>':'')+'</span>'
+        +'<span style="font-size:11px;font-weight:700;color:'+(isDeal?'#10b981':'#ef4444')+';flex-shrink:0">'+(isDeal?'Deal ✅':'No go ❌')+'</span>'
+        +'<button onclick="fcastRevert(\''+uid+'\','+fi+',\''+candEsc+'\')" title="Repasser en potentiel" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0">↺</button>'
+        +'</div>';
+      return;
+    }
     forecastHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cbd5e1;background:rgba(16,185,129,0.10);border-radius:8px;padding:7px 10px;margin-bottom:4px">'
       +'<span style="flex:1;min-width:0;overflow:hidden">'
       +'<span contenteditable="true" style="font-weight:600;outline:none" onblur="updateFcastEntry(\''+uid+'\','+fi+',\'candidat\',this.textContent)">'+e.candidat+'</span>'
@@ -875,7 +907,9 @@ function renderCard(i) {
       +'<input type="number" min="0" max="100" id="fcastpct-'+uid+'-'+fi+'" value="'+(e.pct||'')+'"'
       +' oninput="updateFcastEntry(\''+uid+'\','+fi+',\'pct\',parseInt(this.value)||0);renderFcastSummary(\''+uid+'\')"'
       +' style="width:40px;border:1px solid rgba(16,185,129,0.18);border-radius:6px;padding:3px 5px;font-size:11px;text-align:center;background:#1e293b">%'
-      +'<button onclick="removeFcastEntry(\''+uid+'\','+fi+')" style="background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex-shrink:0">&times;</button>'
+      +'<button onclick="fcastDecide(\''+uid+'\','+fi+',\''+candEsc+'\',\'deal\')" title="Marquer Deal gagne" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:2px 6px;font-size:11px;cursor:pointer;flex-shrink:0">✅</button>'
+      +'<button onclick="fcastDecide(\''+uid+'\','+fi+',\''+candEsc+'\',\'nogo\')" title="Marquer No go" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.4);border-radius:6px;padding:2px 6px;font-size:11px;cursor:pointer;flex-shrink:0">❌</button>'
+      +'<button onclick="removeFcastEntry(\''+uid+'\','+fi+')" title="Supprimer (erreur de saisie)" style="background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex-shrink:0">&times;</button>'
       +'</div>';
   });
   if(fcastEntries.length===0) forecastHtml='<div style="background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.30);border-radius:10px;padding:10px;font-size:12px;color:#fbbf24">Aucun potentiel</div>';
@@ -888,6 +922,51 @@ function renderCard(i) {
     +'<div style="background:#0f172a;border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#94a3b8;margin-bottom:4px">CA Pondere</div><div id="fcast-pond-'+uid+'" style="font-size:13px;font-weight:700;color:#7C3AED">'+fmtEur(initPond)+'</div></div>'
     +'</div>'+forecastHtml+'</div></div>';
   d.appendChild(pipeCard);
+
+  // ---- DETAIL DES PROCESS (depuis l'onglet ITW) ----
+  (function(){
+    var procCard=document.createElement("div");
+    procCard.className="card";
+    function parseFr(d){ var m=(d||"").split("/"); return m.length===3 ? new Date(+m[2],+m[1]-1,+m[0]) : null; }
+    var now=new Date();
+    var list=cItw.slice().sort(function(a,b){
+      var da=parseFr(a.date), db=parseFr(b.date);
+      return (db?db.getTime():0)-(da?da.getTime():0);
+    });
+    var head='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+      +'<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">Process detailles</span>'
+      +'<span style="font-size:11px;color:#94a3b8">'+list.length+' liste'+(list.length>1?'s':'')+' &middot; compteur fiche : <b style="color:#cbd5e1">'+c.nbProcess+'</b></span></div>';
+    if(c.nbProcess!==list.length){
+      head+='<div style="font-size:11px;color:#fbbf24;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:7px 10px;margin-bottom:12px">'
+        +'Ecart entre le compteur ('+c.nbProcess+') et les process avec entretien ('+list.length+') : des process sont peut-etre a passer en "rejected".</div>';
+    }
+    var body='';
+    if(!list.length){
+      body='<p style="font-size:12px;color:#64748b;font-style:italic">Aucun process avec entretien remonte pour ce consultant.</p>';
+    } else {
+      body='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#94a3b8;font-size:10px;text-transform:uppercase">'
+        +'<th style="text-align:left;padding-bottom:8px;font-weight:700">Candidat</th>'
+        +'<th style="text-align:left;padding-bottom:8px;font-weight:700">Job / Client</th>'
+        +'<th style="text-align:center;padding-bottom:8px;font-weight:700">Etape</th>'
+        +'<th style="text-align:right;padding-bottom:8px;font-weight:700">Date</th></tr></thead><tbody>';
+      list.forEach(function(p){
+        var dt=parseFr(p.date);
+        var ageDays=dt?Math.floor((now-dt)/86400000):null;
+        var stale=ageDays!=null && ageDays>21;
+        var dateCol=stale?"#ef4444":"#94a3b8";
+        var stg=(p.stage||"").toLowerCase();
+        var sc=stg.indexOf("final")>=0?"#10b981":stg.indexOf("2nd")>=0?"#a78bfa":"#60a5fa";
+        body+='<tr style="border-top:1px solid #2d3748">'
+          +'<td style="padding:8px 8px 8px 0;font-weight:600;color:#e0e7ff">'+(p.candidat||"-")+'</td>'
+          +'<td style="padding:8px 8px 8px 0"><div style="color:#cbd5e1;line-height:1.3">'+((p.job||"").substring(0,28)||"-")+'</div><div style="font-size:11px;color:#94a3b8">'+(p.client||"")+'</div></td>'
+          +'<td style="text-align:center"><span style="font-size:10px;font-weight:700;color:'+sc+'">'+(p.stage||"-")+'</span></td>'
+          +'<td style="text-align:right;color:'+dateCol+';white-space:nowrap;font-weight:'+(stale?700:400)+'">'+(p.date||"-")+(stale?' &#9888;':'')+'</td></tr>';
+      });
+      body+='</tbody></table><div style="font-size:10px;color:#64748b;margin-top:8px">&#9888; = dernier entretien il y a plus de 3 semaines (process potentiellement a fermer).</div>';
+    }
+    procCard.innerHTML=head+body;
+    d.appendChild(procCard);
+  })();
 
   // ---- PLAN D'ACTION (DOM only, no inline onclick) ----
   var planCard = document.createElement("div");
@@ -1047,7 +1126,7 @@ function buildItw(rows) {
   var out = [];
   for (var r = hdr + 1; r < rows.length; r++) {
     var uid = cv(rows[r], 0); if (!uid) continue;
-    out.push({ uid: uid, slug: cv(rows[r], 4), candidat: cv(rows[r], 6), stage: cv(rows[r], 7) });
+    out.push({ uid: uid, slug: cv(rows[r], 4), job: cv(rows[r], 5), client: cv(rows[r], 3), candidat: cv(rows[r], 6), stage: cv(rows[r], 7), date: cv(rows[r], 8), week: toInt(cv(rows[r], 9)) });
   }
   return out;
 }

@@ -378,8 +378,9 @@ function statusMeta(st) {
   if(st === 'nogo') return {label:'Nogo', bg:'rgba(239,68,68,0.15)', col:'#ef4444'};
   return {label:'Potentiel', bg:'rgba(99,102,241,0.18)', col:'#a5b4fc'};
 }
-// derived status from the announced index, before any manual decision
-function derivedStatus(pct) { return pct >= 100 ? 'deal' : (pct <= 0 ? 'nogo' : 'potentiel'); }
+// derived status before any manual decision : tout est "potentiel" par defaut.
+// Un potentiel ne passe en No go QUE sur decision explicite (clic sur le bouton).
+function derivedStatus(pct) { return pct >= 100 ? 'deal' : 'potentiel'; }
 function buMeta(team) {
   var t = (team||'').toLowerCase();
   var map = {
