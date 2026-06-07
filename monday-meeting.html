@@ -477,14 +477,16 @@ function fcastRevert(uid,fi,candidat) {
 }
 // Ajoute automatiquement tout entretien Final ITW manquant dans le forecast,
 // sans dupliquer ni ecraser les CA/% deja saisis.
+// Normalise un nom pour comparer sans tenir compte des accents / majuscules / espaces
+function normName(s){ return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," "); }
 function ensureFinalItwSeeded(uid, finalItw) {
   if(!finalItw || !finalItw.length) return;
   var entries=getFcastEntries(uid,[]); // entrees actuelles (ou [] si rien)
   var existing={};
-  entries.forEach(function(e){ existing[(e.candidat||"").trim().toLowerCase()]=true; });
+  entries.forEach(function(e){ existing[normName(e.candidat)]=true; });
   var added=false;
   finalItw.forEach(function(r){
-    var key=(r.candidat||"").trim().toLowerCase();
+    var key=normName(r.candidat);
     if(key && !existing[key]){
       var jobMatch=DATA_JOBS.filter(function(j){return j.slug===r.slug;})[0];
       entries.push({candidat:r.candidat,company:jobMatch?jobMatch.client:"",ca:0,pct:0});
@@ -494,8 +496,15 @@ function ensureFinalItwSeeded(uid, finalItw) {
   if(added) saveFcastEntries(uid,entries);
 }
 function resetFcastEntries(uid) {
+  // Resynchronise depuis le pipeline actuel SANS perdre les CA/% deja saisis
+  var old=getFcastEntries(uid,[]);
+  var saved={};
+  old.forEach(function(e){ if(e.ca||e.pct){ saved[normName(e.candidat)]={ca:e.ca,pct:e.pct}; } });
   localStorage.removeItem("fcastentries_"+uid);
-  renderCard(gIdx);
+  renderCard(gIdx); // re-seed depuis les entretiens finaux actuels
+  var fresh=getFcastEntries(uid,[]), changed=false;
+  fresh.forEach(function(e){ var s=saved[normName(e.candidat)]; if(s){ e.ca=s.ca; e.pct=s.pct; changed=true; } });
+  if(changed){ saveFcastEntries(uid,fresh); renderCard(gIdx); }
 }
 function addFcastEntry(uid) {
   var entries=getFcastEntries(uid,[]);
