@@ -414,6 +414,24 @@ function getFcastEntries(uid,seedItw) {
   });
 }
 function saveFcastEntries(uid,entries) { try { localStorage.setItem("fcastentries_"+uid,JSON.stringify(entries)); } catch(e){} }
+// Ajoute automatiquement tout entretien Final ITW manquant dans le forecast,
+// sans dupliquer ni ecraser les CA/% deja saisis.
+function ensureFinalItwSeeded(uid, finalItw) {
+  if(!finalItw || !finalItw.length) return;
+  var entries=getFcastEntries(uid,[]); // entrees actuelles (ou [] si rien)
+  var existing={};
+  entries.forEach(function(e){ existing[(e.candidat||"").trim().toLowerCase()]=true; });
+  var added=false;
+  finalItw.forEach(function(r){
+    var key=(r.candidat||"").trim().toLowerCase();
+    if(key && !existing[key]){
+      var jobMatch=DATA_JOBS.filter(function(j){return j.slug===r.slug;})[0];
+      entries.push({candidat:r.candidat,company:jobMatch?jobMatch.client:"",ca:0,pct:0});
+      existing[key]=true; added=true;
+    }
+  });
+  if(added) saveFcastEntries(uid,entries);
+}
 function resetFcastEntries(uid) {
   localStorage.removeItem("fcastentries_"+uid);
   renderCard(gIdx);
@@ -834,7 +852,9 @@ function renderCard(i) {
       +'<tbody id="jobs-body-'+uid+'">'+buildJobRows(cJobs,cItw,6)+'</tbody></table>';
     if(cJobs.length>6) jobsHtml+='<button id="jobs-more-'+uid+'" onclick="expandJobs(\''+uid+'\')" style="background:none;border:none;color:#7C3AED;font-size:12px;font-weight:500;cursor:pointer;padding:4px 0;margin-top:4px">+'+(cJobs.length-6)+' autres jobs</button>';
   }
-  // Seed forecast entries from finalItw if first time
+  // Injecte automatiquement tous les entretiens finaux a venir dans le forecast
+  // (premiere fois ET a chaque nouveau final, sans ecraser les saisies existantes)
+  ensureFinalItwSeeded(uid, finalItw);
   var fcastEntries=getFcastEntries(uid, finalItw);
   // Save seeded entries so addFcastEntry/removeFcastEntry can read them later
   if(!localStorage.getItem("fcastentries_"+uid)) saveFcastEntries(uid, fcastEntries);
