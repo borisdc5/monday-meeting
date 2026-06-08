@@ -480,6 +480,22 @@ function setUlDisplay(c){
 // Accesseurs surs (avant que ensureUlHistory ait tourne, on retombe sur le score brut)
 function udisp(c){ return (c.ulDisplay!=null)?c.ulDisplay:c.ulScore; }
 function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
+
+// Meetings & Calls ne sont PAS dans la matrice : on les snapshote depuis le sheet resume,
+// pour conserver la valeur de la derniere semaine completee malgre le reset du lundi.
+var WSTAT_SEED = {};
+(function(){ DATA_SUMMARY.forEach(function(c){ WSTAT_SEED[c.uid]={week:c.sem||0, meeting:c.meeting||0, callAb:c.callAb||0}; }); })();
+function getWStat(uid){ try{ var s=localStorage.getItem("wstat_"+uid); if(s){ var o=JSON.parse(s); if(o&&o.week!=null) return o; } }catch(e){} return WSTAT_SEED[uid]||null; }
+function saveWStat(uid,o){ try{ localStorage.setItem("wstat_"+uid,JSON.stringify(o)); }catch(e){} }
+function ensureWStat(c){
+  var snap=getWStat(c.uid), wk=c.sem||0;
+  var hasActivity=((c.meeting||0)>0||(c.callAb||0)>0||(c.firstItw||0)>0);
+  if(wk>0 && hasActivity && (!snap || wk>=snap.week)){
+    snap={week:wk, meeting:c.meeting||0, callAb:c.callAb||0}; saveWStat(c.uid,snap);
+  }
+  c.dispMeeting = snap?snap.meeting:(c.meeting||0);
+  c.dispCalls   = snap?snap.callAb:(c.callAb||0);
+}
 function getFcastEntries(uid,seedItw) {
   try {
     var s=localStorage.getItem("fcastentries_"+uid);
@@ -732,8 +748,8 @@ function showTeam() {
       +"<span style='font-weight:500'>"+c.name+"</span></div></td>"
       +"<td><span style='color:"+col+";font-weight:700'>"+udisp(c)+"</span></td>"
       +"<td>"+c.nbProcess+"</td>"
-      +"<td>"+c.firstItw+"</td>"
-      +"<td>"+c.callAb+"</td>"
+      +"<td>"+(((MATRIX[c.uid]||{}).firstItw!=null)?MATRIX[c.uid].firstItw:c.firstItw)+"</td>"
+      +"<td>"+(c.dispCalls!=null?c.dispCalls:c.callAb)+"</td>"
       +"<td style='color:"+(c.ca>0?"#34d399":"#94a3b8")+";font-weight:"+(c.ca>0?600:400)+"'>"+ca+"</td>"
       +"<td style='color:"+(c.deals>0?"#34d399":"#94a3b8")+";font-weight:"+(c.deals>0?600:400)+"'>"+(c.deals||"-")+"</td>"
       +"<td>"+c.nbJob+"</td>"
@@ -914,15 +930,23 @@ function renderCard(i) {
   // ---- ACTIVITE ----
   var actCard = document.createElement("div");
   actCard.className="card";
-  var meetings = (c.meeting||0);
+  ensureWStat(c);
+  var mx = MATRIX[uid] || {};
+  var actWeek = (mx.week!=null)?mx.week:udweek(c); // derniere semaine completee
+  var mPresc  = (mx.presc!=null)   ? mx.presc    : 0;
+  var mCv     = (mx.cvsent!=null)  ? mx.cvsent   : 0;
+  var mFirst  = (mx.firstItw!=null)? mx.firstItw : (c.firstItw||0);
+  var mOther  = (mx.otherItw!=null)? mx.otherItw : 0;
   var metricData = [
-    {lbl:"1eres ITW",     val:c.firstItw,  color:"#6366F1", lo:3, hi:5},
-    {lbl:"Autres ITW",    val:otherItw,    color:"#8B5CF6", lo:3, hi:5},
-    {lbl:"Meetings",      val:meetings,    color:"#F59E0B", lo:1, hi:2},
-    {lbl:"Calls Prospect",val:calls,       color:"#14B8A6", lo:10,hi:20}
+    {lbl:"Prescreen",     val:mPresc,        color:"#0EA5E9", lo:3, hi:5},
+    {lbl:"CV sent",       val:mCv,           color:"#22C55E", lo:3, hi:5},
+    {lbl:"1eres ITW",     val:mFirst,        color:"#6366F1", lo:3, hi:5},
+    {lbl:"Autres ITW",    val:mOther,        color:"#8B5CF6", lo:3, hi:5},
+    {lbl:"Meetings",      val:(c.dispMeeting||0), color:"#F59E0B", lo:1, hi:2},
+    {lbl:"Calls Prospect",val:(c.dispCalls||0),   color:"#14B8A6", lo:10,hi:20}
   ];
-  var actHtml = '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Activite & Resultats S-1</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">';
+  var actHtml = '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Activite & Resultats — Semaine '+actWeek+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">';
   metricData.forEach(function(m){
     var isNA=m.val==="—";
     var textColor=isNA?"#475569":actColor(m.val,m.lo,m.hi);
@@ -1161,8 +1185,36 @@ function attachNav(){
 var MM_URLS = {
   summary: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1583361967&single=true&output=csv",
   itw:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1643040749&single=true&output=csv",
-  jobs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=584601804&single=true&output=csv"
+  jobs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=584601804&single=true&output=csv",
+  matrix:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=438027768&single=true&output=csv"
 };
+
+// Matrice AllBoard : metriques d'activite par semaine et par consultant (source fiable)
+var MATRIX = {};        // uid -> {week, presc, cvsent, firstItw, otherItw, ulscore}
+var MATRIX_WEEK = null; // derniere semaine completee (avec activite)
+function buildAllboard(rows){
+  if(!rows || rows.length<5) return;
+  var wkrow=rows[3], midrow=rows[4];
+  var metrics=["PRESC","CVSENT","1STITW","OTHITW","PRISEREF","PROSPVIS","PROSPPHY","ACCMANA","TNCS","ULSCORE","JOBTOT","JOBHOT"];
+  var colmap={};
+  for(var j=0;j<midrow.length;j++){
+    var m=(midrow[j]||"").trim(), w=(wkrow[j]||"").trim();
+    if(metrics.indexOf(m)>=0 && /^\d+$/.test(w)) colmap[w+"|"+m]=j;
+  }
+  var cons=[];
+  for(var i=0;i<rows.length;i++){ var uid=(rows[i][1]||"").trim(); if(/^\d+$/.test(uid)) cons.push(rows[i]); }
+  function num(s){ s=(s==null?"":String(s)).trim().replace(",","."); var n=parseFloat(s); return isNaN(n)?0:n; }
+  function val(row,w,m){ var c=colmap[w+"|"+m]; return c!=null?num(row[c]):0; }
+  var weeks=[]; for(var k in colmap){ var w=parseInt(k.split("|")[0],10); if(weeks.indexOf(w)<0) weeks.push(w); }
+  weeks.sort(function(a,b){return a-b;});
+  var last=0;
+  for(var wi=0;wi<weeks.length;wi++){ var ww=weeks[wi], tot=0; for(var ci=0;ci<cons.length;ci++){ tot+=val(cons[ci],ww,"1STITW")+val(cons[ci],ww,"OTHITW")+val(cons[ci],ww,"CVSENT"); } if(tot>0) last=ww; }
+  if(!last) return;
+  MATRIX_WEEK=last; MATRIX={};
+  for(var c2=0;c2<cons.length;c2++){ var r=cons[c2], u=(r[1]||"").trim();
+    MATRIX[u]={ week:last, presc:val(r,last,"PRESC"), cvsent:val(r,last,"CVSENT"), firstItw:val(r,last,"1STITW"), otherItw:val(r,last,"OTHITW"), ulscore:val(r,last,"ULSCORE") };
+  }
+}
 var MM_REFRESH_MS = 5 * 60 * 1000;
 
 function parseCSV(text) {
@@ -1240,12 +1292,14 @@ function loadMondayData() {
   Promise.all([
     fetch(MM_URLS.summary, { cache: 'no-store' }).then(function(r){ return r.text(); }),
     fetch(MM_URLS.itw,     { cache: 'no-store' }).then(function(r){ return r.text(); }),
-    fetch(MM_URLS.jobs,    { cache: 'no-store' }).then(function(r){ return r.text(); })
+    fetch(MM_URLS.jobs,    { cache: 'no-store' }).then(function(r){ return r.text(); }),
+    fetch(MM_URLS.matrix,  { cache: 'no-store' }).then(function(r){ return r.text(); }).catch(function(){ return ""; })
   ]).then(function(texts){
     mergeSummary(parseCSV(texts[0]));
     DATA_ITW  = buildItw(parseCSV(texts[1]));
     DATA_JOBS = buildJobs(parseCSV(texts[2]));
-    DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); }); // calcule le score "vitrine" (derniere semaine completee) pour pills + tableau
+    if(texts[3]) buildAllboard(parseCSV(texts[3]));
+    DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); ensureWStat(c); }); // score "vitrine" + snapshot meetings/calls (derniere semaine completee)
     buildPills();
     renderCard(gIdx);
     g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString();
