@@ -749,7 +749,7 @@ function showTeam() {
       +"<td><span style='color:"+col+";font-weight:700'>"+udisp(c)+"</span></td>"
       +"<td>"+c.nbProcess+"</td>"
       +"<td>"+(((MATRIX[c.uid]||{}).firstItw!=null)?MATRIX[c.uid].firstItw:c.firstItw)+"</td>"
-      +"<td>"+(c.dispCalls!=null?c.dispCalls:c.callAb)+"</td>"
+      +"<td>"+callsFor(c)+"</td>"
       +"<td style='color:"+(c.ca>0?"#34d399":"#94a3b8")+";font-weight:"+(c.ca>0?600:400)+"'>"+ca+"</td>"
       +"<td style='color:"+(c.deals>0?"#34d399":"#94a3b8")+";font-weight:"+(c.deals>0?600:400)+"'>"+(c.deals||"-")+"</td>"
       +"<td>"+c.nbJob+"</td>"
@@ -943,7 +943,7 @@ function renderCard(i) {
     {lbl:"1eres ITW",     val:mFirst,        color:"#6366F1", lo:3, hi:5},
     {lbl:"Autres ITW",    val:mOther,        color:"#8B5CF6", lo:3, hi:5},
     {lbl:"Meetings",      val:(c.dispMeeting||0), color:"#F59E0B", lo:1, hi:2},
-    {lbl:"Calls Prospect",val:(c.dispCalls||0),   color:"#14B8A6", lo:10,hi:20}
+    {lbl:"Calls Prospect",val:callsFor(c),    color:"#14B8A6", lo:10,hi:20}
   ];
   var actHtml = '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Activite & Resultats — Semaine '+actWeek+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">';
@@ -1186,7 +1186,8 @@ var MM_URLS = {
   summary: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1583361967&single=true&output=csv",
   itw:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1643040749&single=true&output=csv",
   jobs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=584601804&single=true&output=csv",
-  matrix:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=438027768&single=true&output=csv"
+  matrix:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=438027768&single=true&output=csv",
+  calls:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=91361805&single=true&output=csv"
 };
 
 // Matrice AllBoard : metriques d'activite par semaine et par consultant (source fiable)
@@ -1215,6 +1216,29 @@ function buildAllboard(rows){
     MATRIX[u]={ week:last, presc:val(r,last,"PRESC"), cvsent:val(r,last,"CVSENT"), firstItw:val(r,last,"1STITW"), otherItw:val(r,last,"OTHITW"), ulscore:val(r,last,"ULSCORE") };
   }
 }
+
+// Calls Prospect par semaine (feuille detaillee gid=91361805).
+// Colonnes: 0 Created On, 2 User (nom), 4 Call Type, 7 Week. User ID vide -> match par nom.
+// On compte UNIQUEMENT "5 - Prospect Call" (les vrais), on EXCLUT "4 - Prospect Call NA".
+var CALLS = {};        // nomNormalise -> nb de prospect calls (derniere semaine)
+var CALLS_WEEK = null;
+function buildCalls(rows){
+  if(!rows || rows.length<2) return;
+  // detecte la derniere semaine presente
+  var weeks={};
+  for(var i=1;i<rows.length;i++){ var w=(rows[i][7]||"").trim(); if(/^\d+$/.test(w)) weeks[w]=true; }
+  var last=0; for(var k in weeks){ var ww=parseInt(k,10); if(ww>last) last=ww; }
+  if(!last) return;
+  CALLS_WEEK=last; CALLS={};
+  for(var r=1;r<rows.length;r++){
+    var w=(rows[r][7]||"").trim(); if(parseInt(w,10)!==last) continue;
+    var type=(rows[r][4]||"").trim();
+    if(type.indexOf("5 - Prospect Call")!==0) continue; // exclut "4 - Prospect Call NA"
+    var nm=normName(rows[r][2]); if(!nm) continue;
+    CALLS[nm]=(CALLS[nm]||0)+1;
+  }
+}
+function callsFor(c){ var v=CALLS[normName(c.name)]; return (v!=null)?v:(c.dispCalls!=null?c.dispCalls:(c.callAb||0)); }
 var MM_REFRESH_MS = 5 * 60 * 1000;
 
 function parseCSV(text) {
@@ -1293,12 +1317,14 @@ function loadMondayData() {
     fetch(MM_URLS.summary, { cache: 'no-store' }).then(function(r){ return r.text(); }),
     fetch(MM_URLS.itw,     { cache: 'no-store' }).then(function(r){ return r.text(); }),
     fetch(MM_URLS.jobs,    { cache: 'no-store' }).then(function(r){ return r.text(); }),
-    fetch(MM_URLS.matrix,  { cache: 'no-store' }).then(function(r){ return r.text(); }).catch(function(){ return ""; })
+    fetch(MM_URLS.matrix,  { cache: 'no-store' }).then(function(r){ return r.text(); }).catch(function(){ return ""; }),
+    fetch(MM_URLS.calls,   { cache: 'no-store' }).then(function(r){ return r.text(); }).catch(function(){ return ""; })
   ]).then(function(texts){
     mergeSummary(parseCSV(texts[0]));
     DATA_ITW  = buildItw(parseCSV(texts[1]));
     DATA_JOBS = buildJobs(parseCSV(texts[2]));
     if(texts[3]) buildAllboard(parseCSV(texts[3]));
+    if(texts[4]) buildCalls(parseCSV(texts[4]));
     DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); ensureWStat(c); }); // score "vitrine" + snapshot meetings/calls (derniere semaine completee)
     buildPills();
     renderCard(gIdx);
