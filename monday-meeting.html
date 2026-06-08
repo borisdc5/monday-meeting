@@ -154,19 +154,27 @@ try{
 }catch(e){ console.warn("Firebase init failed", e); }
 function _syncInit(onReady){
   if(!_fbReady){ onReady&&onReady(); return; }
-  _col.get().then(function(snap){
-    var cloudKeys={};
-    snap.forEach(function(d){ cloudKeys[d.id]=1; var v=d.data().v; if(v!=null) _lsSet(d.id, v); });
-    // Backfill : remonte les saisies locales vers le cloud.
-    //  - normalement : seulement les clés absentes du cloud (1ère mise en commun)
-    //  - ?push=1 : force TOUTES les clés locales (rend ce navigateur "maître")
-    var force = /[?&]push=1/.test(location.search);
-    var pushed=0;
+  var force = /[?&]push=1/.test(location.search);
+  // En mode ?push=1 (récupération) : on pousse le LOCAL vers le cloud AVANT de
+  // charger le cloud, pour que les données de ce navigateur fassent foi.
+  var pre = Promise.resolve();
+  if(force){
+    var n=0;
     Object.keys(localStorage).forEach(function(k){
       if(!_isSyncKey(k)) return;
-      if(force || !cloudKeys[k]){ var v=_lsGet(k); if(v!=null){ _queueWrite(k,v); pushed++; } }
+      var v=_lsGet(k); if(v!=null){ try{ _col.doc(k).set({v:String(v),t:Date.now()}); n++; }catch(e){} }
     });
-    if(force){ try{ alert("✅ "+pushed+" éléments envoyés au cloud partagé. Tout le monde verra tes données."); }catch(e){} }
+    try{ alert("✅ "+n+" éléments de ce navigateur envoyés au cloud partagé."); }catch(e){}
+    pre = new Promise(function(r){ setTimeout(r, 1500); });
+  }
+  pre.then(function(){ return _col.get(); }).then(function(snap){
+    var cloudKeys={};
+    snap.forEach(function(d){ cloudKeys[d.id]=1; var v=d.data().v; if(v!=null) _lsSet(d.id, v); });
+    // Backfill normal : remonte les clés locales ABSENTES du cloud (1ère mise en commun)
+    Object.keys(localStorage).forEach(function(k){
+      if(!_isSyncKey(k)) return;
+      if(!cloudKeys[k]){ var v=_lsGet(k); if(v!=null) _queueWrite(k,v); }
+    });
   }).catch(function(e){ console.warn("sync load", e); }).then(function(){
     onReady && onReady();
     try{
@@ -1424,7 +1432,8 @@ function resetAllPlanNextOnce(){
 document.addEventListener("DOMContentLoaded", function(){
   _syncInit(function(){
     try{
-      resetAllPlanNextOnce();
+      /* resetAllPlanNextOnce(); -- désactivé : écrasait le plan d'action partagé.
+         Le reset hebdo devra être une action manuelle coordonnée (à venir). */
       buildNav();
       attachNav();
       g("top-date").textContent=getMondayLabel();
