@@ -454,7 +454,7 @@ function ensureUlHistory(c){
   if(!o){ // aucun historique connu : on amorce a la semaine courante
     if(wk>0){ o={start:wk, scores:[c.ulScore]}; saveUlHist(c.uid,o); c.ulHistory=o.scores; c._ulStart=o.start; }
     else { c.ulHistory=[]; c._ulStart=null; }
-    return;
+    setUlDisplay(c); return;
   }
   if(wk>0){
     var lastWeek=o.start + o.scores.length - 1;
@@ -462,7 +462,24 @@ function ensureUlHistory(c){
     else if(wk===lastWeek){ o.scores[o.scores.length-1]=c.ulScore; saveUlHist(c.uid,o); }
   }
   c.ulHistory=o.scores; c._ulStart=o.start;
+  setUlDisplay(c);
 }
+// Score "vitrine" = derniere semaine COMPLETEE. Le lundi, la semaine courante vient
+// de demarrer (score 0, rien produit) : on affiche alors la semaine precedente,
+// afin que la reunion review bien les chiffres de la semaine ecoulee.
+function setUlDisplay(c){
+  var hist=(c.ulHistory||[]).slice();
+  var start=(c._ulStart!=null)?c._ulStart:((c.sem||1)-hist.length+1);
+  var di=hist.length-1;
+  if(di>0 && hist[di]===0) di--; // semaine en cours vide -> on recule d'une semaine
+  if(di<0){ c.ulDisplay=c.ulScore; c.ulDisplayWeek=c.sem; c.ulHistDisplay=hist; return; }
+  c.ulDisplay=hist[di];
+  c.ulDisplayWeek=start+di;
+  c.ulHistDisplay=hist.slice(0,di+1); // courbe jusqu'a la derniere semaine completee
+}
+// Accesseurs surs (avant que ensureUlHistory ait tourne, on retombe sur le score brut)
+function udisp(c){ return (c.ulDisplay!=null)?c.ulDisplay:c.ulScore; }
+function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
 function getFcastEntries(uid,seedItw) {
   try {
     var s=localStorage.getItem("fcastentries_"+uid);
@@ -627,9 +644,9 @@ function buildPills() {
   for(var i=0;i<DATA_SUMMARY.length;i++){
     var c=DATA_SUMMARY[i];
     var isA=i===gIdx;
-    var ring=ulGradColor(c.ulScore);
+    var ring=ulGradColor(udisp(c));
     var first=c.name.split(" ")[0];
-    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+c.ulScore+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
+    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+udisp(c)+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
       +'<div style="width:46px;height:46px;border-radius:50%;background:'+ring+';padding:2px;box-sizing:border-box'+(isA?';box-shadow:0 0 0 2px #8b5cf6,0 0 10px rgba(139,92,246,0.6)':'')+'">'
         +'<div style="width:100%;height:100%;border-radius:50%;background:'+aColor(c.uid)+';background-image:url(photos/'+c.uid+'.png);background-size:cover;background-position:center;border:2px solid #0f1419;box-sizing:border-box"></div>'
       +'</div>'
@@ -707,13 +724,13 @@ function showTeam() {
   g("team-head").innerHTML = cols.map(function(c){return "<th>"+c+"</th>";}).join("");
   var html="";
   DATA_SUMMARY.forEach(function(c,i){
-    var col=scColor(c.ulScore);
+    var col=scColor(udisp(c));
     var ca=c.ca>0?fmtEur(c.ca):"-";
     html += "<tr onclick=\"goTo("+i+");closeTeam()\">"
       +"<td><div style='display:flex;align-items:center;gap:8px'>"
       +"<div style='width:28px;height:28px;border-radius:6px;background:"+aColor(c.uid)+";color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0'>"+initials(c.name)+"</div>"
       +"<span style='font-weight:500'>"+c.name+"</span></div></td>"
-      +"<td><span style='color:"+col+";font-weight:700'>"+c.ulScore+"</span></td>"
+      +"<td><span style='color:"+col+";font-weight:700'>"+udisp(c)+"</span></td>"
       +"<td>"+c.nbProcess+"</td>"
       +"<td>"+c.firstItw+"</td>"
       +"<td>"+c.callAb+"</td>"
@@ -741,12 +758,13 @@ function renderCard(i) {
   ensureUlHistory(c);
   var plan = getPlan(uid);
   var note = getNote(uid);
-  var col = ulGradColor(c.ulScore);
+  var ulShow = udisp(c), ulWeek = udweek(c);
+  var col = ulGradColor(ulShow);
   var caPct = pct(c.ca, obj.ca);
   var dealPct = pct(c.deals, obj.deals);
-  var weekPct = c.sem ? Math.round(c.sem/52*100) : 0;
-  var pbadgeCls = c.ulScore>=15?"badge-green":c.ulScore>=10?"badge-orange":"badge-red";
-  var pbadgeLbl = c.ulScore>=15?"Bon rythme":c.ulScore>=10?"Orange":"A surveiller";
+  var weekPct = ulWeek ? Math.round(ulWeek/52*100) : 0;
+  var pbadgeCls = ulShow>=15?"badge-green":ulShow>=10?"badge-orange":"badge-red";
+  var pbadgeLbl = ulShow>=15?"Bon rythme":ulShow>=10?"Orange":"A surveiller";
 
   var d = document.createElement("div");
 
@@ -797,9 +815,9 @@ function renderCard(i) {
   procRangeBar+='</svg>';
 
   // Build UL sparkline (historique reel : semaine _ulStart -> semaine courante)
-  var hist=(c.ulHistory||[]).slice();
-  var ulStart=(c._ulStart!=null)?c._ulStart:(c.sem-hist.length+1);
-  if(hist.length<2){ var base=hist.length?hist[hist.length-1]:c.ulScore; hist=[base,base]; ulStart=(c.sem||1)-1; }
+  var hist=((c.ulHistDisplay&&c.ulHistDisplay.length)?c.ulHistDisplay:(c.ulHistory||[])).slice();
+  var ulStart=(c._ulStart!=null)?c._ulStart:(ulWeek-hist.length+1);
+  if(hist.length<2){ var base=hist.length?hist[hist.length-1]:ulShow; hist=[base,base]; ulStart=(ulWeek||1)-1; }
   var spW=160, spH=50;
   var maxH=Math.max.apply(null,hist)||1;
   var minH=Math.min.apply(null,hist);
@@ -831,8 +849,8 @@ function renderCard(i) {
       +procRangeBar+'</div>'
     +'<div class="card" style="margin-bottom:0">'
       +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;height:28px;display:flex;align-items:flex-start">UL Score</div>'
-      +'<div style="font-size:40px;font-weight:900;margin-bottom:0;color:'+col+'">'+c.ulScore+'</div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Semaine '+c.sem+'</div>'
+      +'<div style="font-size:40px;font-weight:900;margin-bottom:0;color:'+col+'">'+ulShow+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Semaine '+ulWeek+'</div>'
       +ulSparkline+'</div>'
     +'<div id="objs-s1-'+uid+'" class="card" style="margin-bottom:0;overflow:auto;max-height:220px"></div>'
   d.appendChild(kpiGrid);
@@ -1227,6 +1245,7 @@ function loadMondayData() {
     mergeSummary(parseCSV(texts[0]));
     DATA_ITW  = buildItw(parseCSV(texts[1]));
     DATA_JOBS = buildJobs(parseCSV(texts[2]));
+    DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); }); // calcule le score "vitrine" (derniere semaine completee) pour pills + tableau
     buildPills();
     renderCard(gIdx);
     g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString();
