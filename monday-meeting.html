@@ -136,7 +136,8 @@ var FB_CONFIG = {
 var _fbReady=false, _db=null, _col=null;
 var _lsGet = localStorage.getItem.bind(localStorage);
 var _lsSet = localStorage.setItem.bind(localStorage);
-function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|fcastentries_|note_|team_|ulhist_|wstat_|pot_decisions)/.test(k); }
+// Seules les vraies saisies utilisateur sont partagées (ulhist_/wstat_ = caches dérivés du sheet, non synchronisés)
+function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|fcastentries_|note_|team_|pot_decisions)/.test(k); }
 var _wq={};
 function _queueWrite(k,v){
   if(_wq[k]) clearTimeout(_wq[k]);
@@ -612,7 +613,7 @@ function ensureFinalItwSeeded(uid, finalItw) {
       existing[key]=true; added=true;
     }
   });
-  if(added) saveFcastEntries(uid,entries);
+  if(added) _lsSet("fcastentries_"+uid, JSON.stringify(entries)); // seed = local-only
 }
 function resetFcastEntries(uid) {
   // Resynchronise depuis le pipeline actuel SANS perdre les CA/% deja saisis
@@ -1059,8 +1060,8 @@ function renderCard(i) {
   // (premiere fois ET a chaque nouveau final, sans ecraser les saisies existantes)
   ensureFinalItwSeeded(uid, finalItw);
   var fcastEntries=getFcastEntries(uid, finalItw);
-  // Save seeded entries so addFcastEntry/removeFcastEntry can read them later
-  if(!localStorage.getItem("fcastentries_"+uid)) saveFcastEntries(uid, fcastEntries);
+  // Seed local-only (PAS de push cloud) : ne pas écraser les saisies partagées
+  if(!localStorage.getItem("fcastentries_"+uid)) _lsSet("fcastentries_"+uid, JSON.stringify(fcastEntries));
   var potDec=getPotDecisions();
   var initPot=0, initPond=0;
   fcastEntries.forEach(function(e,fi){
