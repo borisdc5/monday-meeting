@@ -119,7 +119,59 @@ body.embedded .main-content { margin-left: 0; }
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
+// ===== SYNC TEMPS RÉEL (Firebase Firestore) =====
+// Les saisies manuelles (objectifs, plan, potentiels, notes...) sont partagées
+// entre tous les utilisateurs via Firestore. Le reste vient du Google Sheet.
+var FB_CONFIG = {
+  apiKey: "AIzaSyChp8rNf2aB2nEcKbNvu4gwczunAAN-i0w",
+  authDomain: "monday-meeting-fb335.firebaseapp.com",
+  projectId: "monday-meeting-fb335",
+  storageBucket: "monday-meeting-fb335.firebasestorage.app",
+  messagingSenderId: "681487302816",
+  appId: "1:681487302816:web:8798079204440e35e0c9c5"
+};
+var _fbReady=false, _db=null, _col=null;
+var _lsGet = localStorage.getItem.bind(localStorage);
+var _lsSet = localStorage.setItem.bind(localStorage);
+function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|fcastentries_|note_|team_|ulhist_|wstat_|pot_decisions)/.test(k); }
+var _wq={};
+function _queueWrite(k,v){
+  if(_wq[k]) clearTimeout(_wq[k]);
+  _wq[k]=setTimeout(function(){ delete _wq[k]; try{ _col.doc(k).set({v:String(v), t:Date.now()}); }catch(e){} }, 400);
+}
+try{
+  firebase.initializeApp(FB_CONFIG);
+  _db = firebase.firestore();
+  _col = _db.collection("state");
+  _fbReady = true;
+  localStorage.setItem = function(k,v){
+    _lsSet(k,v);
+    if(_fbReady && _isSyncKey(k)) _queueWrite(k,v);
+  };
+}catch(e){ console.warn("Firebase init failed", e); }
+function _syncInit(onReady){
+  if(!_fbReady){ onReady&&onReady(); return; }
+  _col.get().then(function(snap){
+    snap.forEach(function(d){ var v=d.data().v; if(v!=null) _lsSet(d.id, v); });
+  }).catch(function(e){ console.warn("sync load", e); }).then(function(){
+    onReady && onReady();
+    try{
+      _col.onSnapshot(function(snap){
+        var changed=false;
+        snap.docChanges().forEach(function(ch){
+          if(ch.type==="removed") return;
+          var k=ch.doc.id, v=ch.doc.data().v;
+          if(v!=null && _lsGet(k)!==v){ _lsSet(k,v); changed=true; }
+        });
+        if(changed){ try{ buildPills(); renderCard(gIdx); }catch(e){} }
+      });
+    }catch(e){}
+  });
+}
+
 // DATA
 var DATA_SUMMARY = [
   {name:"Charlie Billebeau",uid:"48771",nbJob:4,nbProcess:5,ulScore:5,firstItw:0,meeting:0,callNA:2,callAb:3,deals:0,ca:0,sem:23,ulHistory:[7.5,6.8,8.2,6.3,7.5,6.9,5.8,7.0,5.5,6.5,5.3,5.2,6.1,7.1,4.9,5.0,6.1,6.9,5.7,5.0,6.6,3.6],team:"Lyon"},
@@ -1359,20 +1411,22 @@ function resetAllPlanNextOnce(){
 
 // INIT
 document.addEventListener("DOMContentLoaded", function(){
-  try{
-    resetAllPlanNextOnce();
-    buildNav();
-    attachNav();
-    g("top-date").textContent=getMondayLabel();
-    g("data-status").textContent="Chargement…";
-    buildPills();
-    renderCard(0);
-    loadMondayData();
-    setInterval(loadMondayData, MM_REFRESH_MS);
-  } catch(err) {
-    document.body.innerHTML="<pre style='color:red;padding:20px;font-size:14px'>"+err.name+": "+err.message+"\n\n"+err.stack+"</pre>";
-    console.error(err);
-  }
+  _syncInit(function(){
+    try{
+      resetAllPlanNextOnce();
+      buildNav();
+      attachNav();
+      g("top-date").textContent=getMondayLabel();
+      g("data-status").textContent="Chargement…";
+      buildPills();
+      renderCard(0);
+      loadMondayData();
+      setInterval(loadMondayData, MM_REFRESH_MS);
+    } catch(err) {
+      document.body.innerHTML="<pre style='color:red;padding:20px;font-size:14px'>"+err.name+": "+err.message+"\n\n"+err.stack+"</pre>";
+      console.error(err);
+    }
+  });
 });
 
 document.addEventListener("keydown",function(e){
