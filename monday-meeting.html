@@ -155,7 +155,18 @@ try{
 function _syncInit(onReady){
   if(!_fbReady){ onReady&&onReady(); return; }
   _col.get().then(function(snap){
-    snap.forEach(function(d){ var v=d.data().v; if(v!=null) _lsSet(d.id, v); });
+    var cloudKeys={};
+    snap.forEach(function(d){ cloudKeys[d.id]=1; var v=d.data().v; if(v!=null) _lsSet(d.id, v); });
+    // Backfill : remonte les saisies locales vers le cloud.
+    //  - normalement : seulement les clés absentes du cloud (1ère mise en commun)
+    //  - ?push=1 : force TOUTES les clés locales (rend ce navigateur "maître")
+    var force = /[?&]push=1/.test(location.search);
+    var pushed=0;
+    Object.keys(localStorage).forEach(function(k){
+      if(!_isSyncKey(k)) return;
+      if(force || !cloudKeys[k]){ var v=_lsGet(k); if(v!=null){ _queueWrite(k,v); pushed++; } }
+    });
+    if(force){ try{ alert("✅ "+pushed+" éléments envoyés au cloud partagé. Tout le monde verra tes données."); }catch(e){} }
   }).catch(function(e){ console.warn("sync load", e); }).then(function(){
     onReady && onReady();
     try{
