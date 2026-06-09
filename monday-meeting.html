@@ -138,7 +138,7 @@ var _fbReady=false, _db=null, _col=null;
 var _lsGet = localStorage.getItem.bind(localStorage);
 var _lsSet = localStorage.setItem.bind(localStorage);
 // Seules les vraies saisies utilisateur sont partagées (ulhist_/wstat_ = caches dérivés du sheet, non synchronisés)
-function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|fcastentries_|fcastdismiss_|note_|team_|pot_decisions)/.test(k); }
+function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|planlock_|fcastentries_|fcastdismiss_|note_|team_|pot_decisions)/.test(k); }
 var _wq={};
 function _queueWrite(k,v){
   if(_wq[k]) clearTimeout(_wq[k]);
@@ -740,6 +740,13 @@ function togglePlanItem(uid,which,idx){
 function updatePlanItem(uid,which,idx,val){ var obj=getObj(uid),pl=planListGet(uid,obj,which); if(pl.items[idx]){ pl.items[idx].text=val.trim(); planListSave(uid,which,pl); } }
 function addPlanItem(uid,which){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.push({text:"",checked:false}); planListSave(uid,which,pl); renderCard(gIdx); }
 function removePlanItem(uid,which,idx){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.splice(idx,1); planListSave(uid,which,pl); renderCard(gIdx); }
+// --- Verrouillage du plan d'action S+1 : "valider la semaine" ---
+// On stocke la semaine ISO de validation. La fiche reste verrouillee tant qu'on est
+// dans cette meme semaine ISO ; au passage a la semaine suivante elle se rouvre seule.
+function getPlanLock(uid){ try{ return localStorage.getItem("planlock_"+uid)||""; }catch(e){ return ""; } }
+function isPlanLocked(uid){ var w=getPlanLock(uid); return !!w && w===String(_isoWeek(new Date())); }
+function validatePlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,String(_isoWeek(new Date()))); }catch(e){} renderCard(gIdx); }
+function unlockPlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,""); }catch(e){} renderCard(gIdx); }
 function renderFcastSummary(uid) {
   var entries=getFcastEntries(uid,[]);
   var pot=0, pond=0;
@@ -1216,12 +1223,33 @@ function renderCard(i) {
   var planTitle = document.createElement("div");
   planTitle.style.cssText="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em";
   planTitle.textContent="Plan d'action \u2014 Semaine prochaine";
-  var planAddBtn = document.createElement("button");
-  planAddBtn.style.cssText="display:flex;align-items:center;gap:4px;background:#7C3AED;color:white;border:none;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer";
-  planAddBtn.textContent="+ Ajouter";
-  planAddBtn.addEventListener("click", function(){ addPlanItem(uid,"next"); });
+  var planLocked = isPlanLocked(uid);
+  var planBtns = document.createElement("div");
+  planBtns.style.cssText="display:flex;align-items:center;gap:8px";
+  if(planLocked){
+    var lockBadge=document.createElement("span");
+    lockBadge.style.cssText="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#34d399;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);padding:5px 12px;border-radius:8px";
+    lockBadge.innerHTML="&#128274; Semaine validée";
+    var unlockBtn=document.createElement("button");
+    unlockBtn.style.cssText="background:none;border:1px solid #334155;color:#94a3b8;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer";
+    unlockBtn.textContent="Déverrouiller";
+    unlockBtn.addEventListener("click", function(){ unlockPlanWeek(uid); });
+    planBtns.appendChild(lockBadge);
+    planBtns.appendChild(unlockBtn);
+  } else {
+    var planAddBtn = document.createElement("button");
+    planAddBtn.style.cssText="display:flex;align-items:center;gap:4px;background:#7C3AED;color:white;border:none;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer";
+    planAddBtn.textContent="+ Ajouter";
+    planAddBtn.addEventListener("click", function(){ addPlanItem(uid,"next"); });
+    var validateBtn = document.createElement("button");
+    validateBtn.style.cssText="display:flex;align-items:center;gap:5px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.4);padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer";
+    validateBtn.innerHTML="&#10003; Valider la semaine";
+    validateBtn.addEventListener("click", function(){ validatePlanWeek(uid); });
+    planBtns.appendChild(planAddBtn);
+    planBtns.appendChild(validateBtn);
+  }
   planHeader.appendChild(planTitle);
-  planHeader.appendChild(planAddBtn);
+  planHeader.appendChild(planBtns);
   planCard.appendChild(planHeader);
 
   var planGrid = document.createElement("div");
@@ -1240,22 +1268,27 @@ function renderCard(i) {
         chk.className="chk"+(it.checked?" on":"");
         chk.style.marginTop="2px";
         chk.textContent=it.checked?"v":"";
-        chk.addEventListener("click",function(){ togglePlanItem(uid,"next",idx); });
+        if(!planLocked) chk.addEventListener("click",function(){ togglePlanItem(uid,"next",idx); });
+        else chk.style.cursor="default";
         var lbl=document.createElement("span");
-        lbl.contentEditable="true";
+        lbl.contentEditable=planLocked?"false":"true";
         lbl.style.cssText="font-size:13px;flex:1;min-width:0;outline:none;color:"+(it.checked?"#94a3b8":"#cbd5e1")+";text-decoration:"+(it.checked?"line-through":"none");
         lbl.setAttribute("data-ph","Nouvel objectif…");
         lbl.textContent=it.text;
-        // efface le texte par defaut (anciens items) des qu'on clique dans le champ
-        lbl.addEventListener("focus",function(){ var t=lbl.textContent.trim(); if(t==="Nouvel objectif..."||t==="Nouvel objectif…"){ lbl.textContent=""; } });
-        lbl.addEventListener("blur",function(){ updatePlanItem(uid,"next",idx,lbl.textContent); });
-        var del=document.createElement("button");
-        del.style.cssText="background:none;border:none;color:#475569;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px";
-        del.innerHTML="&times;";
-        del.addEventListener("click",function(){ removePlanItem(uid,"next",idx); });
+        if(!planLocked){
+          // efface le texte par defaut (anciens items) des qu'on clique dans le champ
+          lbl.addEventListener("focus",function(){ var t=lbl.textContent.trim(); if(t==="Nouvel objectif..."||t==="Nouvel objectif…"){ lbl.textContent=""; } });
+          lbl.addEventListener("blur",function(){ updatePlanItem(uid,"next",idx,lbl.textContent); });
+        }
         row.appendChild(chk);
         row.appendChild(lbl);
-        row.appendChild(del);
+        if(!planLocked){
+          var del=document.createElement("button");
+          del.style.cssText="background:none;border:none;color:#475569;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px";
+          del.innerHTML="&times;";
+          del.addEventListener("click",function(){ removePlanItem(uid,"next",idx); });
+          row.appendChild(del);
+        }
         colDiv.appendChild(row);
       })(pi);
     }
