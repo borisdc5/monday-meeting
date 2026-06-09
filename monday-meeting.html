@@ -1282,7 +1282,24 @@ var MM_URLS = {
 
 // Matrice AllBoard : metriques d'activite par semaine et par consultant (source fiable)
 var MATRIX = {};        // uid -> {week, presc, cvsent, firstItw, otherItw, ulscore}
-var MATRIX_WEEK = null; // derniere semaine completee (avec activite)
+// Numero de semaine ISO de la date donnee (1..53).
+function _isoWeek(d){ d=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  var day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
+  var ys=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d-ys)/86400000)+1)/7); }
+// La reunion du lundi passe en revue la semaine PRECEDENTE : on ne montre jamais
+// la semaine en cours. On choisit donc la derniere semaine disponible qui est
+// strictement anterieure a la semaine ISO du jour.
+function _targetWeek(weeks){
+  var cur=_isoWeek(new Date());
+  var best=0;
+  for(var i=0;i<weeks.length;i++){ var w=weeks[i]; if(w<cur && w>best) best=w; }
+  if(best) return best;            // cas normal
+  // repli (debut d'annee / donnees decalees) : la plus recente disponible
+  for(var j=0;j<weeks.length;j++){ if(weeks[j]>best) best=weeks[j]; }
+  return best;
+}
+var MATRIX_WEEK = null; // semaine precedente (revue en reunion)
 function buildAllboard(rows){
   if(!rows || rows.length<5) return;
   var wkrow=rows[3], midrow=rows[4];
@@ -1298,8 +1315,7 @@ function buildAllboard(rows){
   function val(row,w,m){ var c=colmap[w+"|"+m]; return c!=null?num(row[c]):0; }
   var weeks=[]; for(var k in colmap){ var w=parseInt(k.split("|")[0],10); if(weeks.indexOf(w)<0) weeks.push(w); }
   weeks.sort(function(a,b){return a-b;});
-  var last=0;
-  for(var wi=0;wi<weeks.length;wi++){ var ww=weeks[wi], tot=0; for(var ci=0;ci<cons.length;ci++){ tot+=val(cons[ci],ww,"1STITW")+val(cons[ci],ww,"OTHITW")+val(cons[ci],ww,"CVSENT"); } if(tot>0) last=ww; }
+  var last=_targetWeek(weeks); // semaine precedente, jamais la semaine en cours
   if(!last) return;
   // Construit dans un objet TEMP, puis ne remplace que si le résultat est complet.
   // Évite qu'un CSV transitoire/partiel ne vide les stats (flicker à zéro).
@@ -1323,9 +1339,10 @@ var CALLS_WEEK = null;
 function buildCalls(rows){
   if(!rows || rows.length<2) return;
   // detecte la derniere semaine presente
-  var weeks={};
-  for(var i=1;i<rows.length;i++){ var w=(rows[i][7]||"").trim(); if(/^\d+$/.test(w)) weeks[w]=true; }
-  var last=0; for(var k in weeks){ var ww=parseInt(k,10); if(ww>last) last=ww; }
+  var wset={};
+  for(var i=1;i<rows.length;i++){ var w=(rows[i][7]||"").trim(); if(/^\d+$/.test(w)) wset[w]=true; }
+  var weeks=[]; for(var k in wset) weeks.push(parseInt(k,10));
+  var last=_targetWeek(weeks); // meme semaine precedente que les stats
   if(!last) return;
   CALLS_WEEK=last; CALLS={};
   for(var r=1;r<rows.length;r++){
