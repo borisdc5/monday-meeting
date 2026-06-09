@@ -97,14 +97,13 @@ Colonnes : 0 date, 2 nom, 4 type, 7 semaine.
 
 Les deux écrans sont **indépendants** et n'ont **pas** la même règle de semaine :
 
-| Écran | Fichier | « Semaine » affichée | ITW |
+| Écran | Fichier | « Semaine » affichée | Colonne process/ITW |
 |---|---|---|---|
-| **AllBoard** (Production / UL Score) | `index.html` | **semaine EN COURS** (lue du Sheet, col « UL SCORE SEMAINE ») | 1st ITW + Total ITW = **mois en cours, inclut la semaine en cours** |
-| **Monday Meeting** (Activité & résultats) | `monday-meeting.html` | **semaine PRÉCÉDENTE** (ISO − 1) | ITW de la semaine précédente |
+| **AllBoard** (Production / UL Score) | `index.html` | **semaine EN COURS** (UL Score Semaine + UL Score Mois, lus du dashboard) | **Process en cours** = nb de process actifs (snapshot, tout ce qui est en cours) |
+| **Monday Meeting** (Activité & résultats) | `monday-meeting.html` | **semaine PRÉCÉDENTE** (ISO − 1) | ITW de la semaine précédente (staging process) |
 
-- L'AllBoard charge ses propres sources (`SHEET_CSV_URL` gid=2060399592 + onglet ITW gid=1643040749) et **ne passe pas** par `MATRIX` / `buildAllboard` / `_targetWeek`.
-- Le « Total ITW » de l'AllBoard est recalculé à partir des dates d'entretien : toutes les ITW dont la date tombe dans le **mois calendaire en cours**.
-- ✅ C'est voulu : l'AllBoard est un tableau de bord temps réel, le Monday Meeting passe en revue la semaine écoulée.
+- L'AllBoard charge le **dashboard** (`SHEET_CSV_URL` gid=2060399592) pour UL Score Semaine/Mois, et le **Sheet résumé** (`SUMMARY_CSV_URL` gid=1583361967, colonne « Nb Process ») pour la colonne **Process en cours**. Il **ne passe pas** par `MATRIX` / `buildAllboard` / `_targetWeek`.
+- ✅ Distinction voulue : l'AllBoard montre **tout ce qui est en cours** (snapshot temps réel) ; le Monday Meeting passe en revue le **staging process de la semaine écoulée**.
 
 ---
 
