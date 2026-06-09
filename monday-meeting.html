@@ -1283,11 +1283,18 @@ function buildAllboard(rows){
   var last=0;
   for(var wi=0;wi<weeks.length;wi++){ var ww=weeks[wi], tot=0; for(var ci=0;ci<cons.length;ci++){ tot+=val(cons[ci],ww,"1STITW")+val(cons[ci],ww,"OTHITW")+val(cons[ci],ww,"CVSENT"); } if(tot>0) last=ww; }
   if(!last) return;
-  MATRIX_WEEK=last; MATRIX={};
+  // Construit dans un objet TEMP, puis ne remplace que si le résultat est complet.
+  // Évite qu'un CSV transitoire/partiel ne vide les stats (flicker à zéro).
+  var tmp={};
   for(var c2=0;c2<cons.length;c2++){ var r=cons[c2], u=(r[1]||"").trim();
-    MATRIX[u]={ week:last, presc:val(r,last,"PRESC"), cvsent:val(r,last,"CVSENT"), firstItw:val(r,last,"1STITW"), otherItw:val(r,last,"OTHITW"), ulscore:val(r,last,"ULSCORE"),
+    tmp[u]={ week:last, presc:val(r,last,"PRESC"), cvsent:val(r,last,"CVSENT"), firstItw:val(r,last,"1STITW"), otherItw:val(r,last,"OTHITW"), ulscore:val(r,last,"ULSCORE"),
       meetings: val(r,last,"PROSPVIS")+val(r,last,"PROSPPHY")+val(r,last,"ACCMANA") };
   }
+  // Garde-fou : on n'écrase l'ancien MATRIX que si le parse a trouvé assez de consultants.
+  var prevCount = Object.keys(MATRIX).length;
+  if(Object.keys(tmp).length < Math.max(5, prevCount - 3)) return; // parse douteux -> on garde l'ancien
+  MATRIX_WEEK=last;
+  MATRIX = tmp;
 }
 
 // Calls Prospect par semaine (feuille detaillee gid=91361805).
@@ -1385,23 +1392,32 @@ function buildJobs(rows) {
   return out;
 }
 
+// Un CSV n'est appliqué QUE s'il est valide (pas vide, pas une page HTML d'erreur,
+// et contient le mot-clé d'en-tête attendu). Sinon on garde les dernières bonnes données.
+function _csvOk(text, mustHave){
+  if(!text || text.length < 40) return false;
+  if(/^\s*</.test(text)) return false;            // page HTML (erreur Google transitoire)
+  if(mustHave && text.indexOf(mustHave) === -1) return false;
+  return true;
+}
 function loadMondayData() {
-  Promise.all([
-    fetch(MM_URLS.summary, { cache: 'no-store' }).then(function(r){ return r.text(); }),
-    fetch(MM_URLS.itw,     { cache: 'no-store' }).then(function(r){ return r.text(); }),
-    fetch(MM_URLS.jobs,    { cache: 'no-store' }).then(function(r){ return r.text(); }),
-    fetch(MM_URLS.matrix,  { cache: 'no-store' }).then(function(r){ return r.text(); }).catch(function(){ return ""; }),
-    fetch(MM_URLS.calls,   { cache: 'no-store' }).then(function(r){ return r.text(); }).catch(function(){ return ""; })
-  ]).then(function(texts){
-    mergeSummary(parseCSV(texts[0]));
-    DATA_ITW  = buildItw(parseCSV(texts[1]));
-    DATA_JOBS = buildJobs(parseCSV(texts[2]));
-    if(texts[3]) buildAllboard(parseCSV(texts[3]));
-    if(texts[4]) buildCalls(parseCSV(texts[4]));
-    DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); ensureWStat(c); }); // score "vitrine" + snapshot meetings/calls (derniere semaine completee)
+  function grab(u){ return fetch(u, { cache: 'no-store' }).then(function(r){ return r.ok ? r.text() : ""; }).catch(function(){ return ""; }); }
+  Promise.all([ grab(MM_URLS.summary), grab(MM_URLS.itw), grab(MM_URLS.jobs), grab(MM_URLS.matrix), grab(MM_URLS.calls) ])
+  .then(function(texts){
+    var applied=0;
+    if(_csvOk(texts[0],'Consultant')){ mergeSummary(parseCSV(texts[0])); applied++; }
+    if(_csvOk(texts[1],'User ID'))   { DATA_ITW  = buildItw(parseCSV(texts[1])); applied++; }
+    if(_csvOk(texts[2],'User ID'))   { DATA_JOBS = buildJobs(parseCSV(texts[2])); applied++; }
+    if(_csvOk(texts[3],'PRESC'))     { buildAllboard(parseCSV(texts[3])); applied++; }
+    if(_csvOk(texts[4],'Call Type')) { buildCalls(parseCSV(texts[4])); applied++; }
+    DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); ensureWStat(c); });
     buildPills();
     renderCard(gIdx);
-    g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString();
+    if(applied>0){
+      g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString();
+    } else {
+      g("data-status").textContent = "Données en cache (source momentanément indisponible)";
+    }
   }).catch(function(err){
     console.error("Echec chargement Monday Meeting:", err);
     g("data-status").textContent = "Hors ligne — données en cache";
