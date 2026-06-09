@@ -748,6 +748,23 @@ function ensureWeekRollover(uid,obj){
     savePlanNext(uid,nxt); // persiste la migration eventuelle
   }
 }
+// Bascule GLOBALE au chargement : archive d'un coup tous les plans dont la semaine
+// a change (ne reecrit rien les autres jours, donc pas de churn de sync).
+function rollAllPlans(){
+  var w=curWeekId(), n=0;
+  Object.keys(localStorage).forEach(function(k){
+    if(k.indexOf("plannext_")!==0) return;
+    var uid=k.slice(9); var o;
+    try { o=JSON.parse(localStorage.getItem(k)); } catch(e){ return; }
+    if(!o||!o.items) return;
+    if(o.week!=null && o.week<w){
+      savePlanPast(uid,{week:o.week,items:o.items}); // -> "objs semaine passee"
+      savePlanNext(uid,{week:w,items:[]});            // repart a vide
+      n++;
+    }
+  });
+  return n;
+}
 // Mutations generiques : which = "next" (bas) ou "past" (haut)
 function planListGet(uid,obj,which){ return which==="past" ? getPlanPast(uid) : rawPlanNext(uid,obj); }
 function planListSave(uid,which,v){ if(which==="past") savePlanPast(uid,v); else savePlanNext(uid,v); }
@@ -1620,6 +1637,7 @@ document.addEventListener("DOMContentLoaded", function(){
     try{
       /* resetAllPlanNextOnce(); -- désactivé : écrasait le plan d'action partagé.
          Le reset hebdo devra être une action manuelle coordonnée (à venir). */
+      rollAllPlans(); // bascule globale : archive tous les plans de la semaine ecoulee
       buildNav();
       attachNav();
       g("top-date").textContent=getMondayLabel();
@@ -1642,6 +1660,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v16</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v17</div>
 </body>
 </html>
