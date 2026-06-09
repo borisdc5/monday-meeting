@@ -260,11 +260,11 @@
         <div class="tabs">
           <div class="tab active" onclick="switchProductionTab('semaine', this)">Semaine</div>
           <div class="tab" onclick="switchProductionTab('mois', this)">Mois</div>
-          <div class="tab" onclick="switchProductionTab('itw', this)">ITW Mois</div>
+          <div class="tab" onclick="switchProductionTab('process', this)">Process en cours</div>
         </div>
         <table class="ranking-table" id="production-table-container">
           <thead>
-            <tr><th>Consultant</th><th id="prod-col1">Sem</th><th id="prod-col2">Mois</th><th id="prod-col3">1st ITW</th><th id="prod-col4">Total ITW</th></tr>
+            <tr><th>Consultant</th><th id="prod-col1">Sem</th><th id="prod-col2">Mois</th><th id="prod-col3">Process en cours</th></tr>
           </thead>
           <tbody id="production-table"></tbody>
         </table>
@@ -357,8 +357,8 @@ var consultant_ids = {
   "CYPRIEN": "90160"
 };
 
-// Total des interviews (tous stades) du mois en cours, par User ID
-var itw_month = {};
+// Nombre de process en cours par User ID (depuis le Sheet résumé)
+var process_count = {};
 
 function getScoreColor(score) {
   if(score >= 20) return 'color-green';
@@ -589,14 +589,13 @@ function renderRanking(data, containerTop3Id, containerTableId) {
 
 function renderProduction(tab) {
   tab = tab || 'semaine';
-  // 1st ITW et Total ITW viennent tous deux de l'onglet ITW (mois en cours),
-  // pour que Total = 1st + toutes les autres étapes (cohérent par construction).
+  // Colonnes : UL Score Semaine, UL Score Mois (dashboard) + Process en cours (Sheet résumé).
   var data = ul_scores.map(function(r){
     var uid = consultant_ids[r[0]];
-    var rec = (uid && itw_month[uid]) ? itw_month[uid] : { first: 0, total: 0 };
-    return { name: r[0], sem: r[1], mois: r[2], first: rec.first, total: rec.total };
+    var proc = (uid && process_count[uid] != null) ? process_count[uid] : 0;
+    return { name: r[0], sem: r[1], mois: r[2], proc: proc };
   });
-  var key = tab === 'mois' ? 'mois' : tab === 'itw' ? 'total' : 'sem';
+  var key = tab === 'mois' ? 'mois' : tab === 'process' ? 'proc' : 'sem';
   data.sort(function(a, b){ return b[key] - a[key]; });
   var html = '';
   for(var i = 0; i < data.length; i++) {
@@ -604,8 +603,7 @@ function renderProduction(tab) {
     html += '<tr><td>' + x.name + '</td>'
       + '<td class="' + getScoreColor(x.sem) + '">' + x.sem.toFixed(1) + '</td>'
       + '<td class="' + getScoreColor(x.mois) + '">' + x.mois.toFixed(1) + '</td>'
-      + '<td>' + x.first + '</td>'
-      + '<td>' + x.total + '</td></tr>';
+      + '<td>' + x.proc + '</td></tr>';
   }
   document.getElementById('production-table').innerHTML = html;
 }
@@ -628,8 +626,8 @@ function renderAllBoard() {
 
 // ---- Chargement dynamique depuis Google Sheets ----
 var SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-mR3SrdzeSVax30LCsanbAJ8v_2_2UJSBWgz6kHw5jghKCaOfxOUF68qZNieWJwxf2hT_tHdP0tX/pub?gid=2060399592&single=true&output=csv";
-// Sheet des interviews (toutes les ITW avec date) — pour le total ITW du mois
-var ITW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1643040749&single=true&output=csv";
+// Sheet résumé (gid 1583361967) — col 1 = User ID, col 5 = Process en cours
+var SUMMARY_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1583361967&single=true&output=csv";
 var REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 
 function parseCSV(text) {
@@ -730,37 +728,29 @@ function setRing(id, pct, color) {
   el.style.background = 'conic-gradient(' + color + ' 0deg, ' + color + ' ' + deg + 'deg, #1e293b ' + deg + 'deg)';
 }
 
-function rebuildItwMonth(rows) {
-  var now = new Date();
-  var mm = now.getMonth() + 1, yy = now.getFullYear();
-  // Compte par consultant, sur le MOIS en cours : 1st ITW et TOTAL (toutes étapes).
-  // Total ITW = 1st + 2nd + 3rd + 4th + 5th + Final → garantit Total >= 1st.
+function rebuildProcess(rows) {
+  // Sheet résumé : col 1 = User ID, col 5 = Process en cours. En-tête repéré par 'Consultant'.
+  var hdr = -1;
+  for (var i = 0; i < rows.length; i++) { if (cell(rows, i, 0) === 'Consultant' || cell(rows, i, 2) === 'Consultant') { hdr = i; break; } }
   var counts = {};
-  for (var r = 1; r < rows.length; r++) {
-    var uid = cell(rows, r, 0);
-    var stage = cell(rows, r, 7);
-    var date = cell(rows, r, 8); // DD/MM/YYYY
-    if (!uid || !date) continue;
-    var parts = date.split('/');
-    if (parts.length !== 3) continue;
-    if (parseInt(parts[1], 10) === mm && parseInt(parts[2], 10) === yy) {
-      if (!counts[uid]) counts[uid] = { first: 0, total: 0 };
-      counts[uid].total++;
-      if (stage.indexOf('1st') === 0) counts[uid].first++;
-    }
+  for (var r = (hdr >= 0 ? hdr + 1 : 1); r < rows.length; r++) {
+    var uid = cell(rows, r, 1);
+    if (!/^\d+$/.test(uid)) continue;
+    var n = parseInt((cell(rows, r, 5) || '').replace(/[^0-9]/g, ''), 10);
+    counts[uid] = isNaN(n) ? 0 : n;
   }
-  if (Object.keys(counts).length) itw_month = counts;
+  if (Object.keys(counts).length) process_count = counts;
 }
 
-function loadItwData() {
-  return fetch(ITW_CSV_URL, { cache: 'no-store' })
+function loadProcessData() {
+  return fetch(SUMMARY_CSV_URL, { cache: 'no-store' })
     .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
-    .then(function(text){ rebuildItwMonth(parseCSV(text)); renderProduction(currentProdTab); })
-    .catch(function(err){ console.error('Echec chargement ITW:', err); });
+    .then(function(text){ rebuildProcess(parseCSV(text)); renderProduction(currentProdTab); })
+    .catch(function(err){ console.error('Echec chargement résumé (process):', err); });
 }
 
 function loadData() {
-  loadItwData();
+  loadProcessData();
   fetch(SHEET_CSV_URL, { cache: 'no-store' })
     .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
     .then(function(text){
