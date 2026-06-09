@@ -865,8 +865,9 @@ function renderCard(i) {
   var plan = getPlan(uid);
   var note = getNote(uid);
   // Monday Meeting : on passe en revue la semaine PRECEDENTE. Le UL Score affiche
-  // donc la derniere semaine COMPLETEE (sem courante - 1), pas la semaine en cours.
-  var ulCurWeek = udweek(c);
+  // donc la derniere semaine COMPLETEE = semaine ISO du jour - 1 (meme horloge que
+  // les tuiles d'activite, bascule pile le lundi 00h00, independant du Sheet).
+  var ulCurWeek = _isoWeek(new Date());
   var ulFullHist = ((c.ulHistDisplay&&c.ulHistDisplay.length)?c.ulHistDisplay:(c.ulHistory||[])).slice();
   if(ulFullHist.length>=2) ulFullHist = ulFullHist.slice(0, ulFullHist.length-1); // retire le point sem. en cours
   var ulWeek = (ulCurWeek!=null ? ulCurWeek : ulFullHist.length+1) - 1;
