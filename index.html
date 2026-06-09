@@ -589,8 +589,10 @@ function renderRanking(data, containerTop3Id, containerTableId) {
 
 function renderProduction(tab) {
   tab = tab || 'semaine';
+  // Noms exclus des colonnes prod
+  var PROD_EXCLUDE = { 'BO': 1, 'AURELIE': 1 };
   // Colonnes : UL Score Semaine, UL Score Mois (dashboard) + Process en cours (Sheet résumé).
-  var data = ul_scores.map(function(r){
+  var data = ul_scores.filter(function(r){ return !PROD_EXCLUDE[(r[0] || '').trim().toUpperCase()]; }).map(function(r){
     var uid = consultant_ids[r[0]];
     var proc = (uid && process_count[uid] != null) ? process_count[uid] : 0;
     return { name: r[0], sem: r[1], mois: r[2], proc: proc };
