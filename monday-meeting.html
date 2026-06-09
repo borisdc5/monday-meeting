@@ -745,8 +745,8 @@ function removePlanItem(uid,which,idx){ var obj=getObj(uid),pl=planListGet(uid,o
 // dans cette meme semaine ISO ; au passage a la semaine suivante elle se rouvre seule.
 function getPlanLock(uid){ try{ return localStorage.getItem("planlock_"+uid)||""; }catch(e){ return ""; } }
 function isPlanLocked(uid){ var w=getPlanLock(uid); return !!w && w===String(_isoWeek(new Date())); }
-function validatePlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,String(_isoWeek(new Date()))); }catch(e){} renderCard(gIdx); }
-function unlockPlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,""); }catch(e){} renderCard(gIdx); }
+function validatePlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,String(_isoWeek(new Date()))); }catch(e){} buildPills(); renderCard(gIdx); }
+function unlockPlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,""); }catch(e){} buildPills(); renderCard(gIdx); }
 function renderFcastSummary(uid) {
   var entries=getFcastEntries(uid,[]);
   var pot=0, pond=0;
@@ -781,9 +781,14 @@ function buildPills() {
     var ulPrev=prevWeekUL(c); // couleur = UL Score semaine precedente (comme la carte Monday)
     var ring=ulGradColor(ulPrev);
     var first=c.name.split(" ")[0];
-    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+ulPrev+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
+    var pillCheck=isPlanLocked(c.uid)
+      ? '<div style="position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:#10b981;border:2px solid #0f1419;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:900">&#10003;</div>'
+      : '';
+    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+ulPrev+(isPlanLocked(c.uid)?' \u2013 semaine valid\u00e9e':'')+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
+      +'<div style="position:relative;width:46px;height:46px">'
       +'<div style="width:46px;height:46px;border-radius:50%;background:'+ring+';padding:2px;box-sizing:border-box'+(isA?';box-shadow:0 0 0 2px #8b5cf6,0 0 10px rgba(139,92,246,0.6)':'')+'">'
         +'<div style="width:100%;height:100%;border-radius:50%;background:'+aColor(c.uid)+';background-image:url(photos/'+c.uid+'.png);background-size:cover;background-position:center;border:2px solid #0f1419;box-sizing:border-box"></div>'
+      +'</div>'+pillCheck
       +'</div>'
       +'<span style="font-size:11px;font-weight:'+(isA?700:500)+';color:'+(isA?"#a78bfa":"#cbd5e1")+';white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis;text-align:center">'+first+'</span>'
     +'</div>';
@@ -915,11 +920,20 @@ function renderCard(i) {
   header.className="card";
   var teamVal = getTeam(uid);
   var teamSelHtml = '<div style="padding:4px 8px;border:1px solid #334155;border-radius:6px;font-size:12px;color:#cbd5e1;background:#1e293b">'+c.team+'</div>';
+  var validatedHdr = isPlanLocked(uid)
+    ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#34d399;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);padding:4px 10px;border-radius:6px">&#10003; Semaine validée</span>'
+    : '';
+  // pastille verte sur la photo si la semaine est validée
+  var avatarCheck = isPlanLocked(uid)
+    ? '<div style="position:absolute;right:-4px;bottom:-4px;width:22px;height:22px;border-radius:50%;background:#10b981;border:2px solid #0f1419;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:900">&#10003;</div>'
+    : '';
   header.innerHTML = '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">'
     +'<div style="display:flex;align-items:center;gap:16px">'
+    +'<div style="position:relative;width:56px;height:56px;flex-shrink:0">'
     +'<div class="avatar" style="background:'+aColor(uid)+';background-image:url(photos/'+uid+'.png);background-size:cover;background-position:center;width:56px;height:56px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center">'
+    +'</div>'+avatarCheck
     +'</div>'
-    +'<div><h1 style="font-size:22px;font-weight:900;color:#e0e7ff;margin:0">'+name+'</h1>'
+    +'<div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="font-size:22px;font-weight:900;color:#e0e7ff;margin:0">'+name+'</h1>'+validatedHdr+'</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:4px">'+teamSelHtml+'</div></div>'
     +'</div>'
     +'<div style="display:flex;gap:8px">'
