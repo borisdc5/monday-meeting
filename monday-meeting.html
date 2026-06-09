@@ -1238,6 +1238,8 @@ function renderCard(i) {
         lbl.style.cssText="font-size:13px;flex:1;min-width:0;outline:none;color:"+(it.checked?"#94a3b8":"#cbd5e1")+";text-decoration:"+(it.checked?"line-through":"none");
         lbl.setAttribute("data-ph","Nouvel objectif…");
         lbl.textContent=it.text;
+        // efface le texte par defaut (anciens items) des qu'on clique dans le champ
+        lbl.addEventListener("focus",function(){ var t=lbl.textContent.trim(); if(t==="Nouvel objectif..."||t==="Nouvel objectif…"){ lbl.textContent=""; } });
         lbl.addEventListener("blur",function(){ updatePlanItem(uid,"next",idx,lbl.textContent); });
         var del=document.createElement("button");
         del.style.cssText="background:none;border:none;color:#475569;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;padding:0 2px";
