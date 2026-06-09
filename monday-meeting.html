@@ -35,6 +35,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .oinput:focus { border-color: #7C3AED; }
 .chk { width: 16px; height: 16px; border: 2px solid #475569; border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .chk.on { background: #7C3AED; border-color: #7C3AED; }
+[contenteditable][data-ph]:empty:before { content: attr(data-ph); color: #64748b; pointer-events: none; }
 .avatar { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 15px; flex-shrink: 0; }
 .card { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
 body.embedded .sidebar { display: none; }
@@ -730,7 +731,7 @@ function togglePlanItem(uid,which,idx){
   renderCard(gIdx);
 }
 function updatePlanItem(uid,which,idx,val){ var obj=getObj(uid),pl=planListGet(uid,obj,which); if(pl.items[idx]){ pl.items[idx].text=val.trim(); planListSave(uid,which,pl); } }
-function addPlanItem(uid,which){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.push({text:"Nouvel objectif...",checked:false}); planListSave(uid,which,pl); renderCard(gIdx); }
+function addPlanItem(uid,which){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.push({text:"",checked:false}); planListSave(uid,which,pl); renderCard(gIdx); }
 function removePlanItem(uid,which,idx){ var obj=getObj(uid),pl=planListGet(uid,obj,which); pl.items.splice(idx,1); planListSave(uid,which,pl); renderCard(gIdx); }
 function renderFcastSummary(uid) {
   var entries=getFcastEntries(uid,[]);
@@ -1235,6 +1236,7 @@ function renderCard(i) {
         var lbl=document.createElement("span");
         lbl.contentEditable="true";
         lbl.style.cssText="font-size:13px;flex:1;min-width:0;outline:none;color:"+(it.checked?"#94a3b8":"#cbd5e1")+";text-decoration:"+(it.checked?"line-through":"none");
+        lbl.setAttribute("data-ph","Nouvel objectif…");
         lbl.textContent=it.text;
         lbl.addEventListener("blur",function(){ updatePlanItem(uid,"next",idx,lbl.textContent); });
         var del=document.createElement("button");
