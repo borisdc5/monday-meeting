@@ -589,18 +589,23 @@ function renderRanking(data, containerTop3Id, containerTableId) {
 
 function renderProduction(tab) {
   tab = tab || 'semaine';
-  var sortIdx = tab === 'mois' ? 2 : tab === 'itw' ? 3 : 1;
-  var rows = ul_scores.slice().sort(function(a, b){ return b[sortIdx] - a[sortIdx]; });
+  // 1st ITW et Total ITW viennent tous deux de l'onglet ITW (mois en cours),
+  // pour que Total = 1st + toutes les autres étapes (cohérent par construction).
+  var data = ul_scores.map(function(r){
+    var uid = consultant_ids[r[0]];
+    var rec = (uid && itw_month[uid]) ? itw_month[uid] : { first: 0, total: 0 };
+    return { name: r[0], sem: r[1], mois: r[2], first: rec.first, total: rec.total };
+  });
+  var key = tab === 'mois' ? 'mois' : tab === 'itw' ? 'total' : 'sem';
+  data.sort(function(a, b){ return b[key] - a[key]; });
   var html = '';
-  for(var i = 0; i < rows.length; i++) {
-    var name = rows[i][0], sem = rows[i][1], mois = rows[i][2], itw = rows[i][3];
-    var uid = consultant_ids[name];
-    var totItw = (uid && itw_month[uid] != null) ? itw_month[uid] : 0;
-    html += '<tr><td>' + name + '</td>'
-      + '<td class="' + getScoreColor(sem) + '">' + sem.toFixed(1) + '</td>'
-      + '<td class="' + getScoreColor(mois) + '">' + mois.toFixed(1) + '</td>'
-      + '<td>' + itw + '</td>'
-      + '<td>' + totItw + '</td></tr>';
+  for(var i = 0; i < data.length; i++) {
+    var x = data[i];
+    html += '<tr><td>' + x.name + '</td>'
+      + '<td class="' + getScoreColor(x.sem) + '">' + x.sem.toFixed(1) + '</td>'
+      + '<td class="' + getScoreColor(x.mois) + '">' + x.mois.toFixed(1) + '</td>'
+      + '<td>' + x.first + '</td>'
+      + '<td>' + x.total + '</td></tr>';
   }
   document.getElementById('production-table').innerHTML = html;
 }
@@ -728,15 +733,20 @@ function setRing(id, pct, color) {
 function rebuildItwMonth(rows) {
   var now = new Date();
   var mm = now.getMonth() + 1, yy = now.getFullYear();
+  // Compte par consultant, sur le MOIS en cours : 1st ITW et TOTAL (toutes étapes).
+  // Total ITW = 1st + 2nd + 3rd + 4th + 5th + Final → garantit Total >= 1st.
   var counts = {};
   for (var r = 1; r < rows.length; r++) {
     var uid = cell(rows, r, 0);
+    var stage = cell(rows, r, 7);
     var date = cell(rows, r, 8); // DD/MM/YYYY
     if (!uid || !date) continue;
     var parts = date.split('/');
     if (parts.length !== 3) continue;
     if (parseInt(parts[1], 10) === mm && parseInt(parts[2], 10) === yy) {
-      counts[uid] = (counts[uid] || 0) + 1;
+      if (!counts[uid]) counts[uid] = { first: 0, total: 0 };
+      counts[uid].total++;
+      if (stage.indexOf('1st') === 0) counts[uid].first++;
     }
   }
   if (Object.keys(counts).length) itw_month = counts;
