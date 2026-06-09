@@ -570,6 +570,13 @@ function setUlDisplay(c){
 }
 // Accesseurs surs (avant que ensureUlHistory ait tourne, on retombe sur le score brut)
 function udisp(c){ return (c.ulDisplay!=null)?c.ulDisplay:c.ulScore; }
+// UL Score de la semaine PRECEDENTE (= ce qu'affiche la carte du Monday) : on retire
+// le dernier point (semaine en cours) de l'historique.
+function prevWeekUL(c){
+  var h=((c&&c.ulHistDisplay&&c.ulHistDisplay.length)?c.ulHistDisplay:((c&&c.ulHistory)||[])).slice();
+  if(h.length>=2) h=h.slice(0,h.length-1);
+  return h.length? h[h.length-1] : udisp(c);
+}
 function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
 
 // Meetings & Calls ne sont PAS dans la matrice : on les snapshote depuis le sheet resume,
@@ -764,9 +771,10 @@ function buildPills() {
   for(var i=0;i<DATA_SUMMARY.length;i++){
     var c=DATA_SUMMARY[i];
     var isA=i===gIdx;
-    var ring=ulGradColor(udisp(c));
+    var ulPrev=prevWeekUL(c); // couleur = UL Score semaine precedente (comme la carte Monday)
+    var ring=ulGradColor(ulPrev);
     var first=c.name.split(" ")[0];
-    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+udisp(c)+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
+    html += '<div onclick="goTo('+i+')" title="'+c.name+' \u2013 UL '+ulPrev+'" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;width:60px">'
       +'<div style="width:46px;height:46px;border-radius:50%;background:'+ring+';padding:2px;box-sizing:border-box'+(isA?';box-shadow:0 0 0 2px #8b5cf6,0 0 10px rgba(139,92,246,0.6)':'')+'">'
         +'<div style="width:100%;height:100%;border-radius:50%;background:'+aColor(c.uid)+';background-image:url(photos/'+c.uid+'.png);background-size:cover;background-position:center;border:2px solid #0f1419;box-sizing:border-box"></div>'
       +'</div>'
