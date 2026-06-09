@@ -137,7 +137,7 @@ var _fbReady=false, _db=null, _col=null;
 var _lsGet = localStorage.getItem.bind(localStorage);
 var _lsSet = localStorage.setItem.bind(localStorage);
 // Seules les vraies saisies utilisateur sont partagées (ulhist_/wstat_ = caches dérivés du sheet, non synchronisés)
-function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|fcastentries_|note_|team_|pot_decisions)/.test(k); }
+function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|fcastentries_|fcastdismiss_|note_|team_|pot_decisions)/.test(k); }
 var _wq={};
 function _queueWrite(k,v){
   if(_wq[k]) clearTimeout(_wq[k]);
@@ -622,6 +622,8 @@ function ensureFinalItwSeeded(uid, finalItw) {
   var entries=getFcastEntries(uid,[]); // entrees actuelles (ou [] si rien)
   var existing={};
   entries.forEach(function(e){ existing[normName(e.candidat)]=true; });
+  // ne pas re-injecter les candidats explicitement ecartes a la main
+  getFcastDismissed(uid).forEach(function(nm){ existing[nm]=true; });
   var added=false;
   finalItw.forEach(function(r){
     var key=normName(r.candidat);
@@ -638,6 +640,7 @@ function resetFcastEntries(uid) {
   var old=getFcastEntries(uid,[]);
   var saved={};
   old.forEach(function(e){ if(e.ca||e.pct){ saved[normName(e.candidat)]={ca:e.ca,pct:e.pct}; } });
+  saveFcastDismissed(uid,[]); // resync complet -> on oublie les ecartes
   localStorage.removeItem("fcastentries_"+uid);
   renderCard(gIdx); // re-seed depuis les entretiens finaux actuels
   var fresh=getFcastEntries(uid,[]), changed=false;
@@ -650,10 +653,20 @@ function addFcastEntry(uid) {
   saveFcastEntries(uid,entries);
   renderCard(gIdx);
 }
+// Entrees ecartees a la main (par nom normalise) : empeche ensureFinalItwSeeded de
+// les re-injecter automatiquement. Partage entre postes (cle fcastdismiss_).
+function getFcastDismissed(uid){ try{ return JSON.parse(localStorage.getItem("fcastdismiss_"+uid)||"[]")||[]; }catch(e){ return []; } }
+function saveFcastDismissed(uid,arr){ try{ localStorage.setItem("fcastdismiss_"+uid,JSON.stringify(arr)); }catch(e){} }
 function removeFcastEntry(uid,idx) {
   var entries=getFcastEntries(uid,[]);
+  var removed=entries[idx];
   entries.splice(idx,1);
   saveFcastEntries(uid,entries);
+  // memorise le nom ecarte pour qu'il ne soit pas re-seede au prochain rendu
+  if(removed && removed.candidat){
+    var dis=getFcastDismissed(uid), nm=normName(removed.candidat);
+    if(dis.indexOf(nm)<0){ dis.push(nm); saveFcastDismissed(uid,dis); }
+  }
   renderCard(gIdx);
 }
 function updateFcastEntry(uid,idx,field,val) {
