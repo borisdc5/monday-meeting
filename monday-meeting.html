@@ -168,14 +168,32 @@ function _syncInit(onReady){
     try{ alert("✅ "+n+" éléments de ce navigateur envoyés au cloud partagé."); }catch(e){}
     pre = new Promise(function(r){ setTimeout(r, 1500); });
   }
+  // Mode restauration : ?restore=AAAA-MM-JJ remet l'état de la sauvegarde de ce jour
+  if(/[?&]restore=/.test(location.search)){
+    var rdate=(location.search.match(/restore=([0-9-]+)/)||[])[1]||"";
+    _db.collection("backups").doc(rdate).get().then(function(b){
+      if(!b.exists){ alert("❌ Aucune sauvegarde pour "+rdate); return; }
+      var data=(b.data()||{}).data||{}, n=0;
+      Object.keys(data).forEach(function(k){ try{ _col.doc(k).set({v:String(data[k]),t:Date.now()}); _lsSet(k,String(data[k])); n++; }catch(e){} });
+      alert("✅ "+n+" éléments restaurés depuis la sauvegarde du "+rdate+". La page va se recharger.");
+      setTimeout(function(){ location.href=location.pathname; }, 800);
+    }).catch(function(e){ alert("Erreur restauration: "+e); });
+    return; // on n'enchaîne pas le chargement normal en mode restauration
+  }
   pre.then(function(){ return _col.get(); }).then(function(snap){
-    var cloudKeys={};
-    snap.forEach(function(d){ cloudKeys[d.id]=1; var v=d.data().v; if(v!=null) _lsSet(d.id, v); });
+    var cloudKeys={}, backupMap={};
+    snap.forEach(function(d){ cloudKeys[d.id]=1; var v=d.data().v; if(v!=null){ _lsSet(d.id, v); backupMap[d.id]=v; } });
     // Backfill normal : remonte les clés locales ABSENTES du cloud (1ère mise en commun)
     Object.keys(localStorage).forEach(function(k){
       if(!_isSyncKey(k)) return;
-      if(!cloudKeys[k]){ var v=_lsGet(k); if(v!=null) _queueWrite(k,v); }
+      if(!cloudKeys[k]){ var v=_lsGet(k); if(v!=null){ _queueWrite(k,v); backupMap[k]=v; } }
     });
+    // Sauvegarde automatique quotidienne : le 1er qui ouvre l'outil dans la journée
+    // fige un instantané complet de l'état partagé (point de restauration).
+    var today=new Date().toISOString().slice(0,10);
+    _db.collection("backups").doc(today).get().then(function(b){
+      if(!b.exists){ _db.collection("backups").doc(today).set({ data: backupMap, ts: Date.now(), n: Object.keys(backupMap).length }); }
+    }).catch(function(){});
   }).catch(function(e){ console.warn("sync load", e); }).then(function(){
     onReady && onReady();
     try{
