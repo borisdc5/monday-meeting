@@ -611,8 +611,10 @@ function renderEvoPanels(){
   // Records — calculés sur TOUS les consultants (Bo & Aurélie inclus)
   var pool = (EVO_ALL && EVO_ALL.length) ? EVO_ALL : EVO_ROWS;
   var YR = (EVO_YEARS && EVO_YEARS.length) ? EVO_YEARS[EVO_YEARS.length-1].year : '';
-  function best(key){ return pool.slice().sort(function(a,b){ return (b[key]||0)-(a[key]||0); })[0] || {}; }
-  var rDeal = best('feeMoy'), rYield = best('yield'), rMens = best('caMoy'), rCar = best('caTot');
+  function best(key, list){ return (list||pool).slice().sort(function(a,b){ return (b[key]||0)-(a[key]||0); })[0] || {}; }
+  // Plus gros deal de l'année : record parmi ceux qui ont dealé en 2026
+  var rDeal = best('record', pool.filter(function(r){ return r.deals > 0; }));
+  var rYield = best('yield'), rMens = best('caMoy'), rCar = best('caTot');
   function recLine(icon, label, name, val){
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0;">'
       + '<div style="width:26px; height:26px; border-radius:8px; background:rgba(99,102,241,0.14); display:flex; align-items:center; justify-content:center; font-size:14px;">'+icon+'</div>'
@@ -621,7 +623,7 @@ function renderEvoPanels(){
   }
   var recEl = document.getElementById('evo-records');
   if(recEl) recEl.innerHTML = panel('Records',
-      recLine('🏆','Plus gros deal '+YR, rDeal.name||'—', evoEur(rDeal.feeMoy))
+      recLine('🏆','Plus gros deal '+YR, rDeal.name||'—', evoEur(rDeal.record))
     + recLine('🎯','Meilleur yield '+YR, rYield.name||'—', evoYieldFmt(rYield.yield))
     + recLine('💼','Meilleur CA mensuel '+YR, rMens.name||'—', evoEur(rMens.caMoy))
     + recLine('📈','Plus gros CA carrière', rCar.name||'—', evoEur(rCar.caTot)));
