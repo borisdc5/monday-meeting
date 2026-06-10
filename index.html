@@ -318,6 +318,7 @@ body.ro .ro-hide { display: none !important; }
       </div>
       <aside style="width:300px; flex:0 0 300px; display:flex; flex-direction:column; gap:16px;">
         <div id="evo-top"></div>
+        <div id="evo-topdeals"></div>
         <div id="evo-records"></div>
         <div id="evo-promos"></div>
       </aside>
@@ -607,6 +608,24 @@ function renderEvoPanels(){
   var topEl = document.getElementById('evo-top');
   if(topEl) topEl.innerHTML = panel('Top performers (CA carrière)', topHtml
     + '<button onclick="evoSetFilter(\'all\')" style="width:100%; margin-top:10px; background:rgba(99,102,241,0.12); border:1px solid #2a3447; color:#c7d2fe; font-size:12px; font-weight:600; padding:8px; border-radius:9px; cursor:pointer;">Voir le classement complet</button>');
+
+  // Top 3 deals de l'année (saisis manuellement : montant + poste + société)
+  var YRD = (EVO_YEARS && EVO_YEARS.length) ? EVO_YEARS[EVO_YEARS.length-1].year : '';
+  var topDeals = [
+    { name:'Boris', amount:37500, role:'COO',                  company:'InProcess.ai' },
+    { name:'Molka', amount:30000, role:'CEO',                  company:'BillUp' },
+    { name:'Ayann', amount:28750, role:'Engineering Manager',  company:'MakiPeople' }
+  ];
+  var tdHtml = '';
+  topDeals.forEach(function(d,i){
+    tdHtml += '<div style="display:flex; align-items:center; gap:10px; padding:8px 0;">'
+      + '<div style="width:22px; height:22px; border-radius:50%; background:'+medal[i]+'; color:#0f1419; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;">'+(i+1)+'</div>'
+      + '<div style="flex:1; min-width:0;"><div style="color:#e0e7ff; font-weight:600; font-size:13px;">'+d.name+'</div>'
+        + '<div style="color:#64748b; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+d.role+' · '+d.company+'</div></div>'
+      + '<div style="color:#34d399; font-weight:700; font-size:13px;">'+evoEur(d.amount)+'</div></div>';
+  });
+  var tdEl = document.getElementById('evo-topdeals');
+  if(tdEl) tdEl.innerHTML = panel('Top 3 deals '+YRD, tdHtml);
 
   // Records — calculés sur TOUS les consultants (Bo & Aurélie inclus)
   var pool = (EVO_ALL && EVO_ALL.length) ? EVO_ALL : EVO_ROWS;
