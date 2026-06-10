@@ -43,10 +43,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .card { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
 body.embedded .sidebar { display: none; }
 body.embedded .main-content { margin-left: 0; }
+/* Lecture seule : masque les contrôles d'édition, neutralise les champs saisissables */
+body.ro .ro-hide { display: none !important; }
+body.ro [contenteditable] { pointer-events: none; }
+body.ro .ro-badge { display: inline-flex !important; }
+.ro-badge { display: none; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #7dd3fc; background: rgba(14,165,233,0.15); border: 1px solid rgba(14,165,233,0.4); padding: 4px 10px; border-radius: 20px; }
 </style>
 </head>
 <body>
-<script>if (window.self !== window.top) { document.body.classList.add('embedded'); }</script>
+<script>if (window.self !== window.top) { document.body.classList.add('embedded'); }
+if (/[?&](ro|lecture)=1/.test(location.search)) { document.body.classList.add('ro'); }</script>
 
 <div class="sidebar">
   <div style="width:32px;height:32px;background:#7C3AED;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;margin-bottom:20px;flex-shrink:0">R</div>
@@ -65,6 +71,7 @@ body.embedded .main-content { margin-left: 0; }
       <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
       <span id="top-date"></span>
     </div>
+    <span class="ro-badge" title="Lien en lecture seule : consultation uniquement, aucune modification possible">&#128065; Lecture seule</span>
     <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
       <span id="data-status" style="font-size:12px;color:#94a3b8"></span>
       <button onclick="showTeam()" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#cbd5e1;border:1px solid #334155;padding:6px 14px;border-radius:8px;background:#1e293b;cursor:pointer">
@@ -156,12 +163,16 @@ var FB_CONFIG = {
   appId: "1:681487302816:web:8798079204440e35e0c9c5"
 };
 var _fbReady=false, _db=null, _col=null;
+// Mode LECTURE SEULE : ?ro=1 (ou ?lecture=1). Coupe TOUTES les écritures cloud,
+// désactive l'édition dans l'UI, mais garde la lecture temps réel (onSnapshot).
+var RO = /[?&](ro|lecture)=1/.test(location.search);
 var _lsGet = localStorage.getItem.bind(localStorage);
 var _lsSet = localStorage.setItem.bind(localStorage);
 // Seules les vraies saisies utilisateur sont partagées (ulhist_/wstat_ = caches dérivés du sheet, non synchronisés)
 function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|planlock_|fcastentries_|fcastdismiss_|note_|team_|pot_decisions)/.test(k); }
 var _wq={};
 function _queueWrite(k,v){
+  if(RO) return; // lecture seule : aucune écriture cloud
   if(_wq[k]) clearTimeout(_wq[k]);
   _wq[k]=setTimeout(function(){ delete _wq[k]; try{ _col.doc(k).set({v:String(v), t:Date.now()}); }catch(e){} }, 400);
 }
@@ -177,7 +188,7 @@ try{
 }catch(e){ console.warn("Firebase init failed", e); }
 function _syncInit(onReady){
   if(!_fbReady){ onReady&&onReady(); return; }
-  var force = /[?&]push=1/.test(location.search);
+  var force = /[?&]push=1/.test(location.search) && !RO;
   // En mode ?push=1 (récupération) : on pousse le LOCAL vers le cloud AVANT de
   // charger le cloud, pour que les données de ce navigateur fassent foi.
   var pre = Promise.resolve();
@@ -191,7 +202,7 @@ function _syncInit(onReady){
     pre = new Promise(function(r){ setTimeout(r, 1500); });
   }
   // Mode restauration : ?restore=AAAA-MM-JJ remet l'état de la sauvegarde de ce jour
-  if(/[?&]restore=/.test(location.search)){
+  if(/[?&]restore=/.test(location.search) && !RO){
     var rdate=(location.search.match(/restore=([0-9-]+)/)||[])[1]||"";
     _db.collection("backups").doc(rdate).get().then(function(b){
       if(!b.exists){ alert("❌ Aucune sauvegarde pour "+rdate); return; }
@@ -212,10 +223,12 @@ function _syncInit(onReady){
     });
     // Sauvegarde automatique quotidienne : le 1er qui ouvre l'outil dans la journée
     // fige un instantané complet de l'état partagé (point de restauration).
-    var today=new Date().toISOString().slice(0,10);
-    _db.collection("backups").doc(today).get().then(function(b){
-      if(!b.exists){ _db.collection("backups").doc(today).set({ data: backupMap, ts: Date.now(), n: Object.keys(backupMap).length }); }
-    }).catch(function(){});
+    if(!RO){
+      var today=new Date().toISOString().slice(0,10);
+      _db.collection("backups").doc(today).get().then(function(b){
+        if(!b.exists){ _db.collection("backups").doc(today).set({ data: backupMap, ts: Date.now(), n: Object.keys(backupMap).length }); }
+      }).catch(function(){});
+    }
   }).catch(function(e){ console.warn("sync load", e); }).then(function(){
     onReady && onReady();
     try{
@@ -1309,10 +1322,12 @@ function renderCard(i) {
   var planTitle = document.createElement("div");
   planTitle.style.cssText="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em";
   planTitle.textContent="Plan d'action \u2014 Semaine prochaine";
-  var planLocked = isPlanLocked(uid);
+  var planLocked = isPlanLocked(uid) || RO; // lecture seule => plan non éditable
   var planBtns = document.createElement("div");
   planBtns.style.cssText="display:flex;align-items:center;gap:8px";
-  if(planLocked){
+  if(RO){
+    /* lecture seule : aucun bouton d'action sur le plan */
+  } else if(isPlanLocked(uid)){
     var lockBadge=document.createElement("span");
     lockBadge.style.cssText="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#34d399;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);padding:5px 12px;border-radius:8px";
     lockBadge.innerHTML="&#128274; Semaine validée";
@@ -1632,12 +1647,30 @@ function resetAllPlanNextOnce(){
 }
 
 // INIT
+// ===== LECTURE SEULE : neutralise l'édition dans l'UI (les écritures cloud sont déjà coupées) =====
+var _RO_EDIT_RE=/addFcastEntry|updateFcastEntry|removeFcastEntry|fcastDecide|fcastRevert|resetFcastEntries|saveObj|resetObj|openObj|togglePlanItem|updatePlanItem|addPlanItem|removePlanItem|validatePlanWeek|unlockPlanWeek/;
+function applyRO(){
+  if(!RO) return;
+  document.querySelectorAll('[contenteditable="true"]').forEach(function(e){ e.setAttribute('contenteditable','false'); });
+  document.querySelectorAll('input,textarea,select').forEach(function(e){ if(e.id!=='recap-text'){ e.readOnly=true; e.disabled=true; } });
+  document.querySelectorAll('button').forEach(function(b){
+    if(b.classList.contains('ro-hide')) return;
+    var oc=b.getAttribute('onclick')||'';
+    if(_RO_EDIT_RE.test(oc)) b.classList.add('ro-hide');
+  });
+}
+function setupReadOnly(){
+  applyRO();
+  // re-applique après chaque rendu (cartes regénérées au clic / refresh)
+  try{ new MutationObserver(function(){ applyRO(); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+}
+
 document.addEventListener("DOMContentLoaded", function(){
   _syncInit(function(){
     try{
       /* resetAllPlanNextOnce(); -- désactivé : écrasait le plan d'action partagé.
          Le reset hebdo devra être une action manuelle coordonnée (à venir). */
-      rollAllPlans(); // bascule globale : archive tous les plans de la semaine ecoulee
+      if(!RO) rollAllPlans(); // bascule globale (jamais en lecture seule)
       buildNav();
       attachNav();
       g("top-date").textContent=getMondayLabel();
@@ -1646,6 +1679,7 @@ document.addEventListener("DOMContentLoaded", function(){
       renderCard(0);
       loadMondayData();
       setInterval(loadMondayData, MM_REFRESH_MS);
+      if(RO) setupReadOnly();
     } catch(err) {
       document.body.innerHTML="<pre style='color:red;padding:20px;font-size:14px'>"+err.name+": "+err.message+"\n\n"+err.stack+"</pre>";
       console.error(err);

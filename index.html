@@ -121,6 +121,13 @@
   </style>
 </head>
 <body>
+<script>if (/[?&](ro|lecture)=1/.test(location.search)) document.body.classList.add('ro');</script>
+<style>
+body.ro .ro-hide { display: none !important; }
+#ro-banner { display: none; position: fixed; top: 10px; right: 14px; z-index: 9999; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #7dd3fc; background: rgba(14,165,233,0.15); border: 1px solid rgba(14,165,233,0.45); padding: 5px 12px; border-radius: 20px; }
+body.ro #ro-banner { display: inline-flex; }
+</style>
+<div id="ro-banner" title="Lien en lecture seule : consultation uniquement">&#128065; Lecture seule</div>
 
 <div class="sidebar">
   <div class="logo" style="background:transparent;overflow:hidden;"><img src="photos/urban-linker-logo.png" alt="Urban Linker" style="width:100%;height:100%;object-fit:contain;"></div>
@@ -399,7 +406,8 @@ function buMeta(team) {
 function getPotDecisions() {
   try { return JSON.parse(localStorage.getItem('pot_decisions') || '{}') || {}; } catch(e) { return {}; }
 }
-function savePotDecisions(d) { try { localStorage.setItem('pot_decisions', JSON.stringify(d)); } catch(e){} }
+var RO = /[?&](ro|lecture)=1/.test(location.search); // lecture seule
+function savePotDecisions(d) { if(RO) return; try { localStorage.setItem('pot_decisions', JSON.stringify(d)); } catch(e){} }
 function potStatus(r, decisions) {
   return decisions[r.key] || derivedStatus(r.pct);
 }
@@ -767,10 +775,21 @@ function loadData() {
     });
 }
 
+// Lecture seule : propage ?ro=1 à l'iframe Monday + masque les boutons de décision potentiels
+function applyROIndex(){
+  if(!RO) return;
+  var fr=document.getElementById('monday-frame');
+  if(fr && fr.src.indexOf('ro=1')<0){ fr.src = 'monday-meeting.html?ro=1'; }
+  document.querySelectorAll('button').forEach(function(b){
+    var oc=b.getAttribute('onclick')||'';
+    if(/potDecide|potRevert/.test(oc)) b.classList.add('ro-hide');
+  });
+}
 document.addEventListener('DOMContentLoaded', function() {
   renderAllBoard();   // rendu immediat avec donnees en cache
   loadData();         // puis chargement live
   setInterval(loadData, REFRESH_MS);
+  if(RO){ applyROIndex(); try{ new MutationObserver(function(){ applyROIndex(); }).observe(document.body,{childList:true,subtree:true}); }catch(e){} }
 });
 </script>
 </body>
