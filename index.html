@@ -460,6 +460,24 @@ function buildEvo(rows){
 
 var EVO_FILTER = 'all';
 function evoSetFilter(f){ EVO_FILTER = f; renderEvo(); }
+function evoSortVal(r, key){
+  if(key === 'step'){ var i = EVO_FAM_ORDER.indexOf(stepFamily(r.step)); return i < 0 ? -1 : i; }
+  if(key === 'deals') return r.deals||0;
+  if(key === 'yield') return r.yield||0;
+  if(key === 'ca') return r.ca||0;
+  return r.caTot||0;
+}
+function evoSetSort(key){
+  if(EVO_SORT.key === key){ EVO_SORT.dir = -EVO_SORT.dir; }
+  else { EVO_SORT.key = key; EVO_SORT.dir = -1; }
+  renderEvo();
+}
+function evoHeadCell(label, key, align){
+  var on = EVO_SORT.key === key;
+  var arrow = on ? (EVO_SORT.dir < 0 ? ' ↓' : ' ↑') : '';
+  var jc = align === 'right' ? 'flex-end' : (align === 'center' ? 'center' : 'flex-start');
+  return '<div onclick="evoSetSort(\''+key+'\')" style="display:flex; align-items:center; justify-content:'+jc+'; gap:3px; cursor:pointer; user-select:none; color:'+(on?'#c7d2fe':'#94a3b8')+';" title="Trier">'+label+'<span style="font-size:11px;">'+arrow+'</span></div>';
+}
 
 function evoYieldColor(y){
   if(y >= 1) return '#34d399';
@@ -533,7 +551,7 @@ function renderEvo(){
 
   // ---- Lignes filtrées, triées par CA carrière décroissant ----
   var rows = EVO_ROWS.filter(function(r){ return EVO_FILTER === 'all' || stepFamily(r.step) === EVO_FILTER; });
-  rows.sort(function(a,b){ return (b.caTot||0) - (a.caTot||0); });
+  rows.sort(function(a,b){ return (evoSortVal(a,EVO_SORT.key) - evoSortVal(b,EVO_SORT.key)) * EVO_SORT.dir; });
 
   var body = '';
   rows.forEach(function(r){
@@ -582,7 +600,12 @@ function renderEvo(){
   cont.innerHTML =
     '<div style="border:1px solid #2a3447; border-radius:14px; overflow:hidden; background:#11161f;">'
     + '<div style="display:grid; grid-template-columns:2.1fr 0.7fr 1fr 0.7fr 2fr 1.6fr 24px; gap:10px; padding:11px 14px; background:#161d29; border-bottom:1px solid #2a3447; color:#94a3b8; font-size:10px; text-transform:uppercase; letter-spacing:.5px; font-weight:600;">'
-      + '<div>Consultant</div><div style="text-align:center;">Deals</div><div style="text-align:right;">CA total</div><div style="text-align:center;">Yield</div><div>Step actuel</div><div>Prochaine étape</div><div></div>'
+      + '<div>Consultant</div>'
+      + evoHeadCell('Deals','deals','center')
+      + evoHeadCell('CA total','ca','right')
+      + evoHeadCell('Yield','yield','center')
+      + evoHeadCell('Step actuel','step','left')
+      + '<div>Prochaine étape</div><div></div>'
     + '</div>' + body + '</div>';
 
   if(st) st.textContent = EVO_ROWS.length + ' consultants · ' + (EVO_YEARS.length ? (EVO_YEARS[0].year+'–'+EVO_YEARS[EVO_YEARS.length-1].year) : '');
