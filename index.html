@@ -303,16 +303,25 @@ body.ro .ro-hide { display: none !important; }
 </div>
 <!-- Placeholder pages -->
 <div id="objectifs" class="page">
-  <div style="padding: 28px 32px;">
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:6px;">
+  <div style="padding: 24px 28px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
       <div>
         <h1 style="color:#e0e7ff; font-size:24px; margin:0;">Évolutions &amp; Performances</h1>
-        <div style="color:#94a3b8; font-size:13px; margin-top:4px;">Vue carrière : step actuel, progression, deals &amp; CA de l'année et historique par consultant.</div>
+        <div style="color:#94a3b8; font-size:13px; margin-top:4px;">Vue carrière : step actuel, progression vers le prochain palier, deals &amp; CA de l'année.</div>
       </div>
       <div id="evo-status" style="color:#64748b; font-size:12px;"></div>
     </div>
-    <div id="evo-summary" style="display:flex; gap:12px; flex-wrap:wrap; margin:18px 0;"></div>
-    <div id="evo-content"></div>
+    <div class="evo-layout" style="display:flex; gap:20px; align-items:flex-start;">
+      <div style="flex:1 1 0; min-width:0;">
+        <div id="evo-tabs" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;"></div>
+        <div id="evo-content"></div>
+      </div>
+      <aside style="width:300px; flex:0 0 300px; display:flex; flex-direction:column; gap:16px;">
+        <div id="evo-top"></div>
+        <div id="evo-records"></div>
+        <div id="evo-promos"></div>
+      </aside>
+    </div>
   </div>
 </div>
 <div id="activites" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Activités (À venir)</h1></div></div>
@@ -420,6 +429,8 @@ function buildEvo(rows){
     var uid = (cell(rows,i,1)||'').trim();
     var name = (cell(rows,i,3)||'').trim();
     if(!/^\d+$/.test(uid) || !name) continue;
+    if(uid === '48693') continue;                       // Boris DC exclu
+    if(/^aur[ée]lie$/i.test(name)) continue;            // Aurélie exclue du classement
     var hist = years.map(function(y){ return { year:y.year, deals:evoInt(cell(rows,i,y.dealCol)), ca:evoInt(cell(rows,i,y.caCol)) }; });
     out.push({
       uid: uid,
@@ -445,11 +456,8 @@ function buildEvo(rows){
   renderEvo();
 }
 
-function evoSortBy(key){
-  if(EVO_SORT.key === key) EVO_SORT.dir *= -1;
-  else { EVO_SORT.key = key; EVO_SORT.dir = (key==='name'||key==='team'||key==='step') ? 1 : -1; }
-  renderEvo();
-}
+var EVO_FILTER = 'all';
+function evoSetFilter(f){ EVO_FILTER = f; renderEvo(); }
 
 function evoYieldColor(y){
   if(y >= 1) return '#34d399';
@@ -457,85 +465,180 @@ function evoYieldColor(y){
   return '#f87171';
 }
 
+// Famille de step (regroupe les niveaux) pour les onglets de filtre
+function stepFamily(s){
+  if(!s) return '';
+  if(/^Top Biller/i.test(s)) return 'Top Biller';
+  if(/^Manager/i.test(s))    return 'Manager';
+  if(/^Senior/i.test(s))     return 'Senior';
+  if(/^Confirm[ée] 2/i.test(s)) return 'Confirmé 2';
+  if(/^Confirm[ée] 1/i.test(s)) return 'Confirmé 1';
+  if(/^Junior/i.test(s))     return 'Junior';
+  if(/^Launcher/i.test(s))   return 'Launcher';
+  return s;
+}
+var EVO_FAM_ORDER = ['Junior','Confirmé 1','Confirmé 2','Senior','Launcher','Top Biller','Manager'];
+
+function evoInitials(name){
+  var p = (name||'').trim().split(/\s+/);
+  var a = (p[0]||'')[0] || '';
+  var b = (p[1]||'')[0] || '';
+  return (a + b).toUpperCase() || '?';
+}
+
+// Progression vers le prochain step à partir du "Reste à faire" (deal ou CA)
+function evoProgress(r){
+  var next = (r.nextStep||'').trim();
+  if(!next) return { pct:null, restTxt:'' };
+  if(/LVL MAX/i.test(next)) return { pct:100, restTxt:'Niveau max', done:true };
+  var raw = (r.reste||'').trim();
+  if(!raw || raw === '-') return { pct:null, restTxt:'' };
+  var isEur = /€/.test(raw) || Math.abs(evoNum(raw)) >= 1000;
+  if(isEur){
+    var val = evoInt(raw);
+    if(val <= 0) return { pct:98, restTxt:'Objectif atteint' };
+    var pct = (r.ca + val) > 0 ? Math.round(r.ca/(r.ca+val)*100) : null;
+    return { pct: pct!=null ? Math.max(2, Math.min(99, pct)) : null, restTxt: evoEur(val)+' restants' };
+  }
+  var dv = Math.round(evoNum(raw));
+  if(dv <= 0) return { pct:98, restTxt:'Objectif atteint' };
+  var pd = (r.deals + dv) > 0 ? Math.round(r.deals/(r.deals+dv)*100) : null;
+  return { pct: pd!=null ? Math.max(2, Math.min(99, pd)) : null, restTxt: dv+' deal'+(dv>1?'s':'')+' restants' };
+}
+
+function evoYieldFmt(y){ return (y||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
 function renderEvo(){
   var st = document.getElementById('evo-status');
-  var sum = document.getElementById('evo-summary');
   var cont = document.getElementById('evo-content');
   if(!cont) return;
   if(!EVO_ROWS.length){ cont.innerHTML = '<div style="color:#64748b; padding:40px 0; text-align:center;">Chargement des données…</div>'; if(!EVO_LOADING) loadEvo(); return; }
 
-  // bandeau de synthèse
-  var totDeals=0, totCa=0, totCaTot=0, totDealTot=0;
-  EVO_ROWS.forEach(function(r){ totDeals+=r.deals; totCa+=r.ca; totCaTot+=r.caTot; totDealTot+=r.dealTot; });
-  function chip(label,val,col){ return '<div style="flex:1; min-width:150px; background:#1a2230; border:1px solid #2a3447; border-radius:12px; padding:14px 16px;"><div style="color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.5px;">'+label+'</div><div style="color:'+(col||'#e0e7ff')+'; font-size:21px; font-weight:700; margin-top:4px;">'+val+'</div></div>'; }
-  if(sum) sum.innerHTML =
-    chip('Deals (année)', totDeals, '#a5b4fc') +
-    chip('CA (année)', evoEur(totCa), '#34d399') +
-    chip('CA carrière (cumul)', evoEur(totCaTot), '#fbbf24') +
-    chip('Deals carrière', totDealTot, '#c084fc') +
-    chip('Consultants', EVO_ROWS.length, '#e0e7ff');
+  // ---- Onglets de filtre par famille de step ----
+  var tabsEl = document.getElementById('evo-tabs');
+  if(tabsEl){
+    var counts = {};
+    EVO_ROWS.forEach(function(r){ var f = stepFamily(r.step); if(f) counts[f] = (counts[f]||0)+1; });
+    var fams = EVO_FAM_ORDER.filter(function(f){ return counts[f]; });
+    function tab(key,label,n){
+      var on = EVO_FILTER === key;
+      return '<button onclick="evoSetFilter(\''+key+'\')" style="display:inline-flex; align-items:center; gap:7px; border:1px solid '+(on?'#6366f1':'#2a3447')+'; background:'+(on?'rgba(99,102,241,0.18)':'#161d29')+'; color:'+(on?'#c7d2fe':'#94a3b8')+'; font-size:13px; font-weight:600; padding:7px 13px; border-radius:10px; cursor:pointer;">'+label+'<span style="background:'+(on?'rgba(99,102,241,0.35)':'#222c3b')+'; color:'+(on?'#e0e7ff':'#cbd5e1')+'; font-size:11px; padding:1px 7px; border-radius:20px;">'+n+'</span></button>';
+    }
+    var html = tab('all','Tous', EVO_ROWS.length);
+    fams.forEach(function(f){ html += tab(f, f, counts[f]); });
+    tabsEl.innerHTML = html;
+  }
 
-  // tri
-  var rows = EVO_ROWS.slice();
-  var k = EVO_SORT.key, d = EVO_SORT.dir;
-  rows.sort(function(a,b){
-    var va=a[k], vb=b[k];
-    if(typeof va === 'string'){ return va.localeCompare(vb) * d; }
-    return ((va||0) - (vb||0)) * d;
-  });
+  // ---- Lignes filtrées, triées par CA carrière décroissant ----
+  var rows = EVO_ROWS.filter(function(r){ return EVO_FILTER === 'all' || stepFamily(r.step) === EVO_FILTER; });
+  rows.sort(function(a,b){ return (b.caTot||0) - (a.caTot||0); });
 
-  // max CA historique pour la sparkline
-  var maxCa = 1;
-  rows.forEach(function(r){ r.hist.forEach(function(h){ if(h.ca>maxCa) maxCa=h.ca; }); });
-
-  function arrow(key){ return EVO_SORT.key===key ? (EVO_SORT.dir<0?' ▾':' ▴') : ''; }
-  function th(label,key,align){ return '<th onclick="evoSortBy(\''+key+'\')" style="cursor:pointer; text-align:'+(align||'left')+'; padding:10px 12px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; user-select:none;">'+label+arrow(key)+'</th>'; }
-
-  var html = '<div style="overflow-x:auto; border:1px solid #2a3447; border-radius:14px;"><table style="width:100%; border-collapse:collapse; min-width:1000px;">';
-  html += '<thead><tr style="background:#161d29; border-bottom:1px solid #2a3447;">'
-    + th('Consultant','name')
-    + th('Team','team')
-    + th('Step actuel','step')
-    + th('Reste à faire','reste')
-    + th('Deals','deals','right')
-    + th('CA année','ca','right')
-    + th('Yield','yield','right')
-    + th('Record','record','right')
-    + th('CA carrière','caTot','right')
-    + '<th style="text-align:left; padding:10px 12px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.4px;">Historique CA</th>'
-    + '</tr></thead><tbody>';
-
-  rows.forEach(function(r, idx){
+  var body = '';
+  rows.forEach(function(r){
     var bu = buMeta(r.team);
-    var bg = idx % 2 ? '#141b27' : '#11161f';
-    var stepLabel = r.step || '—';
-    var nextTxt = r.nextStep ? ('<div style="color:#64748b; font-size:10px; margin-top:2px;">→ '+r.nextStep+'</div>') : '';
-    var reste = r.reste && r.reste !== '-' ? r.reste : '—';
-    // sparkline historique CA
-    var spark = '<div style="display:flex; align-items:flex-end; gap:2px; height:30px;">';
-    r.hist.forEach(function(h){
-      var hp = maxCa ? Math.max(2, Math.round(h.ca/maxCa*30)) : 2;
-      var col = h.ca>0 ? '#34d399' : '#2a3447';
-      spark += '<div title="'+h.year+' : '+evoEur(h.ca)+' ('+h.deals+' deals)" style="width:7px; height:'+hp+'px; background:'+col+'; border-radius:2px; opacity:'+(h.ca>0?0.85:0.4)+';"></div>';
-    });
-    spark += '</div>';
+    var prog = evoProgress(r);
+    var pctTxt = prog.pct!=null ? (prog.pct+'%') : '';
+    var barW = prog.pct!=null ? prog.pct : 0;
+    var nextHtml = r.nextStep
+      ? '<div style="color:#cbd5e1; font-size:13px; font-weight:600;">'+r.nextStep+'</div>'
+        + (prog.restTxt ? '<div style="color:#64748b; font-size:11px;">'+prog.restTxt+'</div>' : '')
+      : '<div style="color:#475569; font-size:13px;">—</div>';
 
-    html += '<tr style="background:'+bg+'; border-bottom:1px solid #1e2632;">'
-      + '<td style="padding:11px 12px; color:#e0e7ff; font-weight:600; white-space:nowrap;">'+r.name+'<div style="color:#64748b; font-size:10px; font-weight:400;">'+(r.duree||'')+'</div></td>'
-      + '<td style="padding:11px 12px;"><span style="background:'+bu.bg+'; color:'+bu.col+'; font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; white-space:nowrap;">'+(r.team||'—')+'</span></td>'
-      + '<td style="padding:11px 12px; color:#cbd5e1; white-space:nowrap;">'+stepLabel+nextTxt+'</td>'
-      + '<td style="padding:11px 12px; color:#94a3b8; font-size:12px; white-space:nowrap;">'+reste+'</td>'
-      + '<td style="padding:11px 12px; text-align:right; color:#a5b4fc; font-weight:600;">'+r.deals+'</td>'
-      + '<td style="padding:11px 12px; text-align:right; color:#e0e7ff;">'+evoEur(r.ca)+'</td>'
-      + '<td style="padding:11px 12px; text-align:right; font-weight:700; color:'+evoYieldColor(r.yield)+';">'+(r.yield).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'
-      + '<td style="padding:11px 12px; text-align:right; color:#fbbf24;">'+evoEur(r.record)+'</td>'
-      + '<td style="padding:11px 12px; text-align:right; color:#cbd5e1;">'+evoEur(r.caTot)+'<div style="color:#64748b; font-size:10px;">'+r.dealTot+' deals</div></td>'
-      + '<td style="padding:11px 12px;">'+spark+'</td>'
-      + '</tr>';
+    body += '<div style="display:grid; grid-template-columns:2.1fr 0.7fr 1fr 0.7fr 2fr 1.6fr 24px; align-items:center; gap:10px; padding:13px 14px; border-bottom:1px solid #1a2230;">'
+      // Consultant
+      + '<div style="display:flex; align-items:center; gap:11px; min-width:0;">'
+        + '<div style="position:relative; flex:0 0 auto;"><div style="width:38px; height:38px; border-radius:50%; background:'+bu.bg+'; color:'+bu.col+'; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; border:1px solid '+bu.col+'33;">'+evoInitials(r.name)+'</div>'
+          + (r.deals>0?'<span style="position:absolute; right:0; bottom:0; width:10px; height:10px; border-radius:50%; background:#34d399; border:2px solid #0f1419;"></span>':'')
+        + '</div>'
+        + '<div style="min-width:0;"><div style="color:#e0e7ff; font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+r.name+'</div>'
+          + '<div style="margin-top:3px;"><span style="background:'+bu.bg+'; color:'+bu.col+'; font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px;">'+(r.team||'—').replace(/^TEAM /,'')+'</span></div></div>'
+      + '</div>'
+      // Deals
+      + '<div style="text-align:center;"><div style="color:#e0e7ff; font-weight:700; font-size:16px;">'+r.deals+'</div><div style="color:#64748b; font-size:10px;">deal'+(r.deals>1?'s':'')+'</div></div>'
+      // CA total (année)
+      + '<div style="text-align:right; color:#e0e7ff; font-weight:600; font-size:14px;">'+evoEur(r.ca)+'</div>'
+      // Yield
+      + '<div style="text-align:center; font-weight:700; font-size:15px; color:'+evoYieldColor(r.yield)+';">'+evoYieldFmt(r.yield)+'</div>'
+      // Step actuel + barre
+      + '<div>'
+        + '<span style="display:inline-block; background:rgba(99,102,241,0.18); color:#c7d2fe; font-size:11px; font-weight:600; padding:3px 10px; border-radius:7px;">'+(r.step||'—')+'</span>'
+        + '<div style="display:flex; align-items:center; gap:8px; margin-top:7px;">'
+          + '<div style="flex:1; height:6px; background:#1e2632; border-radius:4px; overflow:hidden;"><div style="width:'+barW+'%; height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:4px;"></div></div>'
+          + '<span style="color:#94a3b8; font-size:11px; min-width:30px; text-align:right;">'+pctTxt+'</span>'
+        + '</div>'
+      + '</div>'
+      // Prochaine étape
+      + '<div style="text-align:left;">'+nextHtml+'</div>'
+      // Chevron
+      + '<div style="color:#475569; text-align:center;">›</div>'
+      + '</div>';
   });
-  html += '</tbody></table></div>';
-  cont.innerHTML = html;
+  if(!rows.length) body = '<div style="color:#64748b; padding:30px; text-align:center;">Aucun consultant pour ce filtre.</div>';
+
+  cont.innerHTML =
+    '<div style="border:1px solid #2a3447; border-radius:14px; overflow:hidden; background:#11161f;">'
+    + '<div style="display:grid; grid-template-columns:2.1fr 0.7fr 1fr 0.7fr 2fr 1.6fr 24px; gap:10px; padding:11px 14px; background:#161d29; border-bottom:1px solid #2a3447; color:#94a3b8; font-size:10px; text-transform:uppercase; letter-spacing:.5px; font-weight:600;">'
+      + '<div>Consultant</div><div style="text-align:center;">Deals</div><div style="text-align:right;">CA total</div><div style="text-align:center;">Yield</div><div>Step actuel</div><div>Prochaine étape</div><div></div>'
+    + '</div>' + body + '</div>';
+
   if(st) st.textContent = EVO_ROWS.length + ' consultants · ' + (EVO_YEARS.length ? (EVO_YEARS[0].year+'–'+EVO_YEARS[EVO_YEARS.length-1].year) : '');
+
+  renderEvoPanels();
+}
+
+// ---- Panneaux latéraux : Top performers, Records, Promotions à venir ----
+function renderEvoPanels(){
+  var medal = ['#fbbf24','#cbd5e1','#f59e0b'];
+  function panel(title, inner){
+    return '<div style="background:#11161f; border:1px solid #2a3447; border-radius:14px; padding:16px;">'
+      + '<div style="color:#94a3b8; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; margin-bottom:12px;">'+title+'</div>'+inner+'</div>';
+  }
+
+  // Top performers (CA carrière)
+  var top = EVO_ROWS.slice().sort(function(a,b){ return b.caTot - a.caTot; }).slice(0,3);
+  var topHtml = '';
+  top.forEach(function(r,i){
+    topHtml += '<div style="display:flex; align-items:center; gap:10px; padding:7px 0;">'
+      + '<div style="width:22px; height:22px; border-radius:50%; background:'+medal[i]+'; color:#0f1419; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center;">'+(i+1)+'</div>'
+      + '<div style="flex:1; color:#e0e7ff; font-weight:600; font-size:13px;">'+r.name+'</div>'
+      + '<div style="color:#cbd5e1; font-weight:600; font-size:13px;">'+evoEur(r.caTot)+'</div></div>';
+  });
+  var topEl = document.getElementById('evo-top');
+  if(topEl) topEl.innerHTML = panel('Top performers (CA carrière)', topHtml
+    + '<button onclick="evoSetFilter(\'all\')" style="width:100%; margin-top:10px; background:rgba(99,102,241,0.12); border:1px solid #2a3447; color:#c7d2fe; font-size:12px; font-weight:600; padding:8px; border-radius:9px; cursor:pointer;">Voir le classement complet</button>');
+
+  // Records
+  function best(key){ return EVO_ROWS.slice().sort(function(a,b){ return (b[key]||0)-(a[key]||0); })[0] || {}; }
+  var rDeal = best('record'), rYield = best('yield'), rMens = best('caMoy'), rCar = best('caTot');
+  function recLine(icon, label, name, val){
+    return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0;">'
+      + '<div style="width:26px; height:26px; border-radius:8px; background:rgba(99,102,241,0.14); display:flex; align-items:center; justify-content:center; font-size:14px;">'+icon+'</div>'
+      + '<div style="flex:1; color:#94a3b8; font-size:12px;">'+label+'</div>'
+      + '<div style="text-align:right;"><div style="color:#e0e7ff; font-weight:600; font-size:12px;">'+name+'</div><div style="color:#cbd5e1; font-size:12px;">'+val+'</div></div></div>';
+  }
+  var recEl = document.getElementById('evo-records');
+  if(recEl) recEl.innerHTML = panel('Records',
+      recLine('🏆','Plus gros deal', rDeal.name||'—', evoEur(rDeal.record))
+    + recLine('🎯','Meilleur yield', rYield.name||'—', evoYieldFmt(rYield.yield))
+    + recLine('💼','Meilleur CA mensuel', rMens.name||'—', evoEur(rMens.caMoy))
+    + recLine('📈','Plus gros CA carrière', rCar.name||'—', evoEur(rCar.caTot)));
+
+  // Promotions à venir : les plus proches d'un step (pct le plus haut, hors niveau max)
+  var promos = EVO_ROWS.map(function(r){ return { r:r, p:evoProgress(r) }; })
+    .filter(function(x){ return x.p.pct!=null && !x.p.done && x.r.nextStep; })
+    .sort(function(a,b){ return b.p.pct - a.p.pct; }).slice(0,3);
+  var promoHtml = '';
+  promos.forEach(function(x,i){
+    var r = x.r, pct = x.p.pct;
+    promoHtml += '<div style="display:flex; align-items:center; gap:9px; padding:7px 0;">'
+      + '<div style="width:20px; height:20px; border-radius:50%; background:'+medal[i]+'; color:#0f1419; font-weight:800; font-size:11px; display:flex; align-items:center; justify-content:center;">'+(i+1)+'</div>'
+      + '<div style="flex:1; min-width:0;"><div style="color:#e0e7ff; font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+r.name+'</div>'
+        + '<div style="color:#64748b; font-size:10px;">→ '+r.nextStep+'</div></div>'
+      + '<div style="display:flex; align-items:center; gap:7px; flex:0 0 92px;"><div style="flex:1; height:5px; background:#1e2632; border-radius:4px; overflow:hidden;"><div style="width:'+pct+'%; height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div></div><span style="color:#94a3b8; font-size:11px; min-width:28px; text-align:right;">'+pct+'%</span></div></div>';
+  });
+  if(!promos.length) promoHtml = '<div style="color:#64748b; font-size:12px;">Aucune progression chiffrée disponible.</div>';
+  var promoEl = document.getElementById('evo-promos');
+  if(promoEl) promoEl.innerHTML = panel('Promotions à venir', promoHtml);
 }
 
 function loadEvo(){
