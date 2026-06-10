@@ -396,6 +396,7 @@ function switchPage(page) {
 var EVO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-mR3SrdzeSVax30LCsanbAJ8v_2_2UJSBWgz6kHw5jghKCaOfxOUF68qZNieWJwxf2hT_tHdP0tX/pub?gid=1021209797&single=true&output=csv";
 var EVO_ROWS = [];
 var EVO_YEARS = [];
+var EVO_LOADING = false;
 var EVO_SORT = { key:'caTot', dir:-1 };
 
 function evoEur(n){ return Number(n||0).toLocaleString('fr-FR') + ' €'; }
@@ -461,7 +462,7 @@ function renderEvo(){
   var sum = document.getElementById('evo-summary');
   var cont = document.getElementById('evo-content');
   if(!cont) return;
-  if(!EVO_ROWS.length){ cont.innerHTML = '<div style="color:#64748b; padding:40px 0; text-align:center;">Chargement des données…</div>'; return; }
+  if(!EVO_ROWS.length){ cont.innerHTML = '<div style="color:#64748b; padding:40px 0; text-align:center;">Chargement des données…</div>'; if(!EVO_LOADING) loadEvo(); return; }
 
   // bandeau de synthèse
   var totDeals=0, totCa=0, totCaTot=0, totDealTot=0;
@@ -538,10 +539,13 @@ function renderEvo(){
 }
 
 function loadEvo(){
+  if(EVO_LOADING) return;
+  EVO_LOADING = true;
   fetch(EVO_CSV_URL, { cache: 'no-store' })
     .then(function(res){ return res.text(); })
     .then(function(text){ var rows = parseCSV(text); if(rows && rows.length>4) buildEvo(rows); })
-    .catch(function(){ /* on garde l'affichage courant */ });
+    .catch(function(){ /* on garde l'affichage courant */ })
+    .then(function(){ EVO_LOADING = false; });
 }
 
 // ---- POTENTIELS ----
