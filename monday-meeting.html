@@ -691,7 +691,7 @@ function resetFcastEntries(uid) {
 }
 function addFcastEntry(uid) {
   var entries=getFcastEntries(uid,[]);
-  entries.push({candidat:"Nouveau candidat",company:"",ca:0,pct:0});
+  entries.push({candidat:"",company:"",ca:0,pct:0});
   saveFcastEntries(uid,entries);
   renderCard(gIdx);
 }
@@ -1235,10 +1235,17 @@ function renderCard(i) {
         +'</div>';
       return;
     }
+    var candAttr=(e.candidat||'').replace(/"/g,'&quot;');
+    var compAttr=(e.company||'').replace(/"/g,'&quot;');
     forecastHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cbd5e1;background:rgba(16,185,129,0.10);border-radius:8px;padding:7px 10px;margin-bottom:4px">'
-      +'<span style="flex:1;min-width:0;overflow:hidden">'
-      +'<span contenteditable="true" style="font-weight:600;outline:none" onblur="updateFcastEntry(\''+uid+'\','+fi+',\'candidat\',this.textContent)">'+e.candidat+'</span>'
-      +(e.company?' <span style="color:#94a3b8;font-size:11px">@ <span contenteditable="true" style="outline:none" onblur="updateFcastEntry(\''+uid+'\','+fi+',\'company\',this.textContent)">'+e.company+'</span></span>':'')
+      +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:6px">'
+      +'<input type="text" value="'+candAttr+'" placeholder="Candidat"'
+      +' oninput="updateFcastEntry(\''+uid+'\','+fi+',\'candidat\',this.value)"'
+      +' style="flex:1 1 50%;min-width:0;font-weight:600;color:#e0e7ff;border:1px solid rgba(16,185,129,0.18);border-radius:6px;padding:3px 7px;font-size:12px;background:#1e293b;outline:none">'
+      +'<span style="color:#64748b;font-size:11px;flex-shrink:0">@</span>'
+      +'<input type="text" value="'+compAttr+'" placeholder="Entreprise"'
+      +' oninput="updateFcastEntry(\''+uid+'\','+fi+',\'company\',this.value)"'
+      +' style="flex:1 1 50%;min-width:0;color:#94a3b8;border:1px solid rgba(16,185,129,0.12);border-radius:6px;padding:3px 7px;font-size:11px;background:#1e293b;outline:none">'
       +'</span>'
       +'<input type="number" min="0" id="fcastca-'+uid+'-'+fi+'" value="'+(e.ca||'')+'" placeholder="CA"'
       +' oninput="updateFcastEntry(\''+uid+'\','+fi+',\'ca\',parseInt(this.value)||0);renderFcastSummary(\''+uid+'\')"'
