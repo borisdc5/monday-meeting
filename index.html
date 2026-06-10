@@ -131,7 +131,7 @@ body.ro .ro-hide { display: none !important; }
   <div class="nav-item active" onclick="switchPage('allboard')" title="AllBoard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="nav-label">AllBoard</span></div>
   <div class="nav-item" onclick="switchPage('monday')" title="Monday Meeting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Monday</span></div>
   <div class="nav-item" onclick="switchPage('potentiels')" title="Potentiels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg><span class="nav-label">Potentiels</span></div>
-  <div class="nav-item" onclick="switchPage('objectifs')" title="Objectifs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span class="nav-label">Objectifs</span></div>
+  <div class="nav-item" onclick="switchPage('objectifs')" title="Évolutions & Performances"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span class="nav-label">Évolutions</span></div>
   <div class="nav-item" onclick="switchPage('activites')" title="Activités"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Activités</span></div>
   <div class="nav-item" onclick="switchPage('equipe')" title="Equipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span class="nav-label">Equipe</span></div>
   <div class="nav-item" onclick="switchPage('settings')" title="Paramètres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span class="nav-label">Réglages</span></div>
@@ -302,7 +302,19 @@ body.ro .ro-hide { display: none !important; }
   </div>
 </div>
 <!-- Placeholder pages -->
-<div id="objectifs" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Objectifs (À venir)</h1></div></div>
+<div id="objectifs" class="page">
+  <div style="padding: 28px 32px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:6px;">
+      <div>
+        <h1 style="color:#e0e7ff; font-size:24px; margin:0;">Évolutions &amp; Performances</h1>
+        <div style="color:#94a3b8; font-size:13px; margin-top:4px;">Vue carrière : step actuel, progression, deals &amp; CA de l'année et historique par consultant.</div>
+      </div>
+      <div id="evo-status" style="color:#64748b; font-size:12px;"></div>
+    </div>
+    <div id="evo-summary" style="display:flex; gap:12px; flex-wrap:wrap; margin:18px 0;"></div>
+    <div id="evo-content"></div>
+  </div>
+</div>
 <div id="activites" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Activités (À venir)</h1></div></div>
 <div id="equipe" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Equipe (À venir)</h1></div></div>
 <div id="settings" class="page"><div style="padding: 32px;"><h1 style="color: #e0e7ff; font-size: 24px;">Paramètres (À venir)</h1></div></div>
@@ -377,6 +389,159 @@ function switchPage(page) {
   event.target.classList.add('active');
   if(page === 'allboard') renderAllBoard();
   if(page === 'potentiels') renderPotentiels();
+  if(page === 'objectifs') renderEvo();
+}
+
+// ---- ÉVOLUTIONS & PERFORMANCES ----
+var EVO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-mR3SrdzeSVax30LCsanbAJ8v_2_2UJSBWgz6kHw5jghKCaOfxOUF68qZNieWJwxf2hT_tHdP0tX/pub?gid=1021209797&single=true&output=csv";
+var EVO_ROWS = [];
+var EVO_YEARS = [];
+var EVO_SORT = { key:'caTot', dir:-1 };
+
+function evoEur(n){ return Number(n||0).toLocaleString('fr-FR') + ' €'; }
+function evoNum(s){ var n = parseFloat((s||'').replace(/[^0-9,.-]/g,'').replace(',', '.')); return isNaN(n)?0:n; }
+function evoInt(s){ var n = parseInt((s||'').replace(/[^0-9-]/g,''),10); return isNaN(n)?0:n; }
+
+function buildEvo(rows){
+  if(!rows || rows.length < 5) return;
+  // ligne des années : celle où col 21 vaut une année (2017..)
+  var yrRow = -1;
+  for(var r=0; r<Math.min(rows.length,8); r++){
+    if(/^20[12]\d$/.test((cell(rows,r,21)||'').trim())){ yrRow = r; break; }
+  }
+  var years = [];
+  if(yrRow >= 0){
+    for(var c=21; c<=30; c++){ var y=(cell(rows,yrRow,c)||'').trim(); if(/^20\d\d$/.test(y)) years.push({year:y, dealCol:c, caCol:c+10}); }
+  }
+  EVO_YEARS = years;
+  var out = [];
+  for(var i=0;i<rows.length;i++){
+    var uid = (cell(rows,i,1)||'').trim();
+    var name = (cell(rows,i,3)||'').trim();
+    if(!/^\d+$/.test(uid) || !name) continue;
+    var hist = years.map(function(y){ return { year:y.year, deals:evoInt(cell(rows,i,y.dealCol)), ca:evoInt(cell(rows,i,y.caCol)) }; });
+    out.push({
+      uid: uid,
+      name: name,
+      team: (cell(rows,i,2)||'').trim(),
+      deals: evoInt(cell(rows,i,4)),
+      ca: evoInt(cell(rows,i,5)),
+      caMoy: evoInt(cell(rows,i,9)),
+      yield: evoNum(cell(rows,i,10)),
+      reste: (cell(rows,i,11)||'').trim(),
+      step: (cell(rows,i,12)||'').trim(),
+      nextStep: (cell(rows,i,14)||'').trim(),
+      arrivee: (cell(rows,i,15)||'').trim(),
+      duree: (cell(rows,i,16)||'').trim(),
+      record: evoInt(cell(rows,i,17)),
+      dealTot: evoInt(cell(rows,i,18)),
+      yieldTot: evoNum(cell(rows,i,19)),
+      caTot: evoInt(cell(rows,i,20)),
+      hist: hist
+    });
+  }
+  EVO_ROWS = out;
+  renderEvo();
+}
+
+function evoSortBy(key){
+  if(EVO_SORT.key === key) EVO_SORT.dir *= -1;
+  else { EVO_SORT.key = key; EVO_SORT.dir = (key==='name'||key==='team'||key==='step') ? 1 : -1; }
+  renderEvo();
+}
+
+function evoYieldColor(y){
+  if(y >= 1) return '#34d399';
+  if(y >= 0.7) return '#fbbf24';
+  return '#f87171';
+}
+
+function renderEvo(){
+  var st = document.getElementById('evo-status');
+  var sum = document.getElementById('evo-summary');
+  var cont = document.getElementById('evo-content');
+  if(!cont) return;
+  if(!EVO_ROWS.length){ cont.innerHTML = '<div style="color:#64748b; padding:40px 0; text-align:center;">Chargement des données…</div>'; return; }
+
+  // bandeau de synthèse
+  var totDeals=0, totCa=0, totCaTot=0, totDealTot=0;
+  EVO_ROWS.forEach(function(r){ totDeals+=r.deals; totCa+=r.ca; totCaTot+=r.caTot; totDealTot+=r.dealTot; });
+  function chip(label,val,col){ return '<div style="flex:1; min-width:150px; background:#1a2230; border:1px solid #2a3447; border-radius:12px; padding:14px 16px;"><div style="color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.5px;">'+label+'</div><div style="color:'+(col||'#e0e7ff')+'; font-size:21px; font-weight:700; margin-top:4px;">'+val+'</div></div>'; }
+  if(sum) sum.innerHTML =
+    chip('Deals (année)', totDeals, '#a5b4fc') +
+    chip('CA (année)', evoEur(totCa), '#34d399') +
+    chip('CA carrière (cumul)', evoEur(totCaTot), '#fbbf24') +
+    chip('Deals carrière', totDealTot, '#c084fc') +
+    chip('Consultants', EVO_ROWS.length, '#e0e7ff');
+
+  // tri
+  var rows = EVO_ROWS.slice();
+  var k = EVO_SORT.key, d = EVO_SORT.dir;
+  rows.sort(function(a,b){
+    var va=a[k], vb=b[k];
+    if(typeof va === 'string'){ return va.localeCompare(vb) * d; }
+    return ((va||0) - (vb||0)) * d;
+  });
+
+  // max CA historique pour la sparkline
+  var maxCa = 1;
+  rows.forEach(function(r){ r.hist.forEach(function(h){ if(h.ca>maxCa) maxCa=h.ca; }); });
+
+  function arrow(key){ return EVO_SORT.key===key ? (EVO_SORT.dir<0?' ▾':' ▴') : ''; }
+  function th(label,key,align){ return '<th onclick="evoSortBy(\''+key+'\')" style="cursor:pointer; text-align:'+(align||'left')+'; padding:10px 12px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; user-select:none;">'+label+arrow(key)+'</th>'; }
+
+  var html = '<div style="overflow-x:auto; border:1px solid #2a3447; border-radius:14px;"><table style="width:100%; border-collapse:collapse; min-width:1000px;">';
+  html += '<thead><tr style="background:#161d29; border-bottom:1px solid #2a3447;">'
+    + th('Consultant','name')
+    + th('Team','team')
+    + th('Step actuel','step')
+    + th('Reste à faire','reste')
+    + th('Deals','deals','right')
+    + th('CA année','ca','right')
+    + th('Yield','yield','right')
+    + th('Record','record','right')
+    + th('CA carrière','caTot','right')
+    + '<th style="text-align:left; padding:10px 12px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.4px;">Historique CA</th>'
+    + '</tr></thead><tbody>';
+
+  rows.forEach(function(r, idx){
+    var bu = buMeta(r.team);
+    var bg = idx % 2 ? '#141b27' : '#11161f';
+    var stepLabel = r.step || '—';
+    var nextTxt = r.nextStep ? ('<div style="color:#64748b; font-size:10px; margin-top:2px;">→ '+r.nextStep+'</div>') : '';
+    var reste = r.reste && r.reste !== '-' ? r.reste : '—';
+    // sparkline historique CA
+    var spark = '<div style="display:flex; align-items:flex-end; gap:2px; height:30px;">';
+    r.hist.forEach(function(h){
+      var hp = maxCa ? Math.max(2, Math.round(h.ca/maxCa*30)) : 2;
+      var col = h.ca>0 ? '#34d399' : '#2a3447';
+      spark += '<div title="'+h.year+' : '+evoEur(h.ca)+' ('+h.deals+' deals)" style="width:7px; height:'+hp+'px; background:'+col+'; border-radius:2px; opacity:'+(h.ca>0?0.85:0.4)+';"></div>';
+    });
+    spark += '</div>';
+
+    html += '<tr style="background:'+bg+'; border-bottom:1px solid #1e2632;">'
+      + '<td style="padding:11px 12px; color:#e0e7ff; font-weight:600; white-space:nowrap;">'+r.name+'<div style="color:#64748b; font-size:10px; font-weight:400;">'+(r.duree||'')+'</div></td>'
+      + '<td style="padding:11px 12px;"><span style="background:'+bu.bg+'; color:'+bu.col+'; font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; white-space:nowrap;">'+(r.team||'—')+'</span></td>'
+      + '<td style="padding:11px 12px; color:#cbd5e1; white-space:nowrap;">'+stepLabel+nextTxt+'</td>'
+      + '<td style="padding:11px 12px; color:#94a3b8; font-size:12px; white-space:nowrap;">'+reste+'</td>'
+      + '<td style="padding:11px 12px; text-align:right; color:#a5b4fc; font-weight:600;">'+r.deals+'</td>'
+      + '<td style="padding:11px 12px; text-align:right; color:#e0e7ff;">'+evoEur(r.ca)+'</td>'
+      + '<td style="padding:11px 12px; text-align:right; font-weight:700; color:'+evoYieldColor(r.yield)+';">'+(r.yield).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'
+      + '<td style="padding:11px 12px; text-align:right; color:#fbbf24;">'+evoEur(r.record)+'</td>'
+      + '<td style="padding:11px 12px; text-align:right; color:#cbd5e1;">'+evoEur(r.caTot)+'<div style="color:#64748b; font-size:10px;">'+r.dealTot+' deals</div></td>'
+      + '<td style="padding:11px 12px;">'+spark+'</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  cont.innerHTML = html;
+  if(st) st.textContent = EVO_ROWS.length + ' consultants · ' + (EVO_YEARS.length ? (EVO_YEARS[0].year+'–'+EVO_YEARS[EVO_YEARS.length-1].year) : '');
+}
+
+function loadEvo(){
+  fetch(EVO_CSV_URL, { cache: 'no-store' })
+    .then(function(res){ return res.text(); })
+    .then(function(text){ var rows = parseCSV(text); if(rows && rows.length>4) buildEvo(rows); })
+    .catch(function(){ /* on garde l'affichage courant */ });
 }
 
 // ---- POTENTIELS ----
@@ -758,6 +923,7 @@ function loadProcessData() {
 
 function loadData() {
   loadProcessData();
+  loadEvo();
   fetch(SHEET_CSV_URL, { cache: 'no-store' })
     .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
     .then(function(text){
