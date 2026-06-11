@@ -899,8 +899,11 @@ function expandJobs(uid) {
     var jItw=d.itw.filter(function(r){return r.slug===j.slug;});
     var hColor=jItw.length>=3?"#10B981":jItw.length>=1?"#F59E0B":"#EF4444";
     var hLabel=jItw.length>=3?"Bon":jItw.length>=1?"Moyen":"Vide";
+    var isCold=/cold/i.test(j.status||"");
+    var stColor=isCold?"#60a5fa":"#34d399", stBg=isCold?"rgba(96,165,250,0.12)":"rgba(16,185,129,0.12)", stBd=isCold?"rgba(96,165,250,0.35)":"rgba(16,185,129,0.35)";
+    var stBadge=' <span style="font-size:10px;font-weight:700;color:'+stColor+';background:'+stBg+';border:1px solid '+stBd+';padding:1px 6px;border-radius:5px;white-space:nowrap">'+((j.status||"").trim()||"Open")+'</span>';
     rows+='<tr style="border-top:1px solid #2d3748">'
-      +'<td style="padding:8px 8px 8px 0"><div style="font-weight:600;color:#e0e7ff;line-height:1.3">'+j.job.substring(0,32)+'</div><div style="font-size:11px;color:#94a3b8">'+j.client+'</div></td>'
+      +'<td style="padding:8px 8px 8px 0"><div style="font-weight:600;color:#e0e7ff;line-height:1.3">'+j.job+stBadge+'</div><div style="font-size:11px;color:#94a3b8">'+j.client+'</div></td>'
       +'<td style="text-align:center;color:#94a3b8">'+jItw.length+'</td>'
       +'<td style="text-align:center;font-size:11px;font-weight:700;color:'+hColor+'">'+hLabel+'</td></tr>';
   });
@@ -1705,6 +1708,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v19</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v20</div>
 </body>
 </html>
