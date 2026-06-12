@@ -1092,7 +1092,10 @@ function renderCard(i) {
       +'<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">Entretiens en cours &nbsp;<span class="badge '+procBadgeCls+'" style="font-size:10px;padding:2px 8px">'+procBadgeLbl+'</span></div>'
       +procRangeBar+'</div>'
     +'<div class="card" style="margin-bottom:0">'
-      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;height:28px;display:flex;align-items:flex-start">UL Score</div>'
+      +'<div style="height:28px;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">'
+        +'<span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">UL Score</span>'
+        +(UL_MOIS[uid]!=null ? '<span title="Cumul UL Score du mois" style="font-size:11px;font-weight:700;color:#cbd5e1;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:2px 7px;white-space:nowrap">Mois '+UL_MOIS[uid]+'</span>' : '')
+      +'</div>'
       +'<div style="font-size:40px;font-weight:900;margin-bottom:0;color:'+col+'">'+ulShow+'</div>'
       +'<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Semaine '+ulWeek+'</div>'
       +ulSparkline+'</div>'
@@ -1457,8 +1460,26 @@ var MM_URLS = {
   itw:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=1643040749&single=true&output=csv",
   jobs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=584601804&single=true&output=csv",
   matrix:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=438027768&single=true&output=csv",
-  calls:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=91361805&single=true&output=csv"
+  calls:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRe3dHpEfNv60WdpwbEcxV245iXe45qzyIAxG9XlDDvS-RUev_GnO5AX5Z6CW96NgNkXkkck-HgCfxq/pub?gid=91361805&single=true&output=csv",
+  // Dashboard (autre publication) : pour le cumul "UL Score Mois"
+  ulmois:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-mR3SrdzeSVax30LCsanbAJ8v_2_2UJSBWgz6kHw5jghKCaOfxOUF68qZNieWJwxf2hT_tHdP0tX/pub?gid=2060399592&single=true&output=csv"
 };
+// UL Score Mois (cumul du mois) par uid, lu du dashboard. Mapping nom dashboard -> uid.
+var UL_MOIS = {};
+var DASH_MOIS_MAP = {ADEM:"52349",BASILE:"52269",AYANN:"52276",GAUTIER:"52237",MAXIME:"52319",MARTIN:"52245",HUGO:"52339",CAMILLE:"85643",CHARLIE:"48771",CO:"52257",MOLKA:"52272",BAPTISTE:"75012",CYPRIEN:"90160",ACHILLE:"125984","PIERRE C.":"52244","KIM-SIAN":"49038",MAISSA:"120906",LOUANE:"120903",MICHAEL:"52285"};
+function buildUlMois(rows){
+  var hdr=-1;
+  for(var i=0;i<rows.length;i++){ if(rows[i].some(function(c){return (c||"").indexOf("UL SCORE MOIS")>=0;})){ hdr=i; break; } }
+  if(hdr<0) return;
+  var tmp={};
+  for(var r=hdr+1;r<rows.length;r++){
+    var nm=(rows[r][19]||"").trim().toUpperCase(); if(!nm) continue;
+    var uid=DASH_MOIS_MAP[nm]; if(!uid) continue;
+    var v=parseFloat((rows[r][20]||"").replace(",",".")); if(isNaN(v)) continue;
+    tmp[uid]=v;
+  }
+  if(Object.keys(tmp).length) UL_MOIS=tmp;
+}
 
 // Matrice AllBoard : metriques d'activite par semaine et par consultant (source fiable)
 var MATRIX = {};        // uid -> {week, presc, cvsent, firstItw, otherItw, ulscore}
@@ -1617,7 +1638,7 @@ function _csvOk(text, mustHave){
 }
 function loadMondayData() {
   function grab(u){ return fetch(u, { cache: 'no-store' }).then(function(r){ return r.ok ? r.text() : ""; }).catch(function(){ return ""; }); }
-  Promise.all([ grab(MM_URLS.summary), grab(MM_URLS.itw), grab(MM_URLS.jobs), grab(MM_URLS.matrix), grab(MM_URLS.calls) ])
+  Promise.all([ grab(MM_URLS.summary), grab(MM_URLS.itw), grab(MM_URLS.jobs), grab(MM_URLS.matrix), grab(MM_URLS.calls), grab(MM_URLS.ulmois) ])
   .then(function(texts){
     var applied=0;
     if(_csvOk(texts[0],'Consultant')){ mergeSummary(parseCSV(texts[0])); applied++; }
@@ -1625,6 +1646,7 @@ function loadMondayData() {
     if(_csvOk(texts[2],'User ID'))   { DATA_JOBS = buildJobs(parseCSV(texts[2])); applied++; }
     if(_csvOk(texts[3],'PRESC'))     { buildAllboard(parseCSV(texts[3])); applied++; }
     if(_csvOk(texts[4],'Call Type')) { buildCalls(parseCSV(texts[4])); applied++; }
+    if(_csvOk(texts[5],'UL SCORE MOIS')){ buildUlMois(parseCSV(texts[5])); applied++; }
     DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); ensureWStat(c); });
     buildPills();
     renderCard(gIdx);
@@ -1708,6 +1730,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v20</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v21</div>
 </body>
 </html>
