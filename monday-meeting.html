@@ -989,11 +989,20 @@ function renderCard(i) {
   // Monday Meeting : on passe en revue la semaine PRECEDENTE. Le UL Score affiche
   // donc la derniere semaine COMPLETEE = semaine ISO du jour - 1 (meme horloge que
   // les tuiles d'activite, bascule pile le lundi 00h00, independant du Sheet).
+  // On va CHERCHER le score de cette semaine precise dans l'historique (par numero
+  // de semaine), au lieu de retirer aveuglement le dernier point : si le Sheet n'a
+  // pas encore de ligne pour la semaine en cours, retirer le dernier point ferait
+  // afficher l'avant-derniere semaine (bug : "5" sem.23 etiquete "Semaine 24").
   var ulCurWeek = _isoWeek(new Date());
-  var ulFullHist = ((c.ulHistDisplay&&c.ulHistDisplay.length)?c.ulHistDisplay:(c.ulHistory||[])).slice();
-  if(ulFullHist.length>=2) ulFullHist = ulFullHist.slice(0, ulFullHist.length-1); // retire le point sem. en cours
-  var ulWeek = (ulCurWeek!=null ? ulCurWeek : ulFullHist.length+1) - 1;
-  var ulShow = ulFullHist.length ? ulFullHist[ulFullHist.length-1] : udisp(c);
+  var ulHistAll = (c.ulHistory||[]).slice();
+  var ulWeek = (ulCurWeek!=null ? ulCurWeek : ((c.sem||1)+1)) - 1; // derniere semaine completee
+  var ulStartW = (c._ulStart!=null) ? c._ulStart : ((c.sem||ulWeek) - ulHistAll.length + 1);
+  var ulIdx = ulWeek - ulStartW;
+  if(ulIdx > ulHistAll.length-1) ulIdx = ulHistAll.length-1; // pas de donnee plus recente : on prend la derniere connue
+  if(ulIdx < 0) ulIdx = 0;
+  if(ulHistAll.length){ ulWeek = ulStartW + ulIdx; } // recale le libelle sur la semaine reellement affichee
+  var ulFullHist = ulHistAll.length ? ulHistAll.slice(0, ulIdx+1) : []; // courbe jusqu'a la semaine affichee
+  var ulShow = ulHistAll.length ? ulHistAll[ulIdx] : udisp(c);
   var col = ulGradColor(ulShow);
   var caPct = pct(c.ca, obj.ca);
   var dealPct = pct(c.deals, obj.deals);
