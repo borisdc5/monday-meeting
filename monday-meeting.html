@@ -612,6 +612,20 @@ function prevWeekUL(c){
   return h.length? h[h.length-1] : udisp(c);
 }
 function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
+// Score de la derniere semaine COMPLETEE (= semaine ISO du jour - 1), cherche par
+// NUMERO de semaine dans l'historique. C'est la meme valeur que le headline de la
+// carte : on l'utilise aussi pour la couleur des pastilles du haut (coherence).
+function lastCompletedUL(c){
+  var hist=(c&&c.ulHistory||[]).slice();
+  if(!hist.length) return udisp(c);
+  var cur=_isoWeek(new Date());
+  var wk=(cur!=null?cur:((c.sem||1)+1))-1;
+  var start=(c._ulStart!=null)?c._ulStart:((c.sem||wk)-hist.length+1);
+  var idx=wk-start;
+  if(idx>hist.length-1) idx=hist.length-1;
+  if(idx<0) idx=0;
+  return hist[idx];
+}
 
 // Meetings & Calls ne sont PAS dans la matrice : on les snapshote depuis le sheet resume,
 // pour conserver la valeur de la derniere semaine completee malgre le reset du lundi.
@@ -829,7 +843,8 @@ function buildPills() {
   for(var i=0;i<DATA_SUMMARY.length;i++){
     var c=DATA_SUMMARY[i];
     var isA=i===gIdx;
-    var ulPrev=prevWeekUL(c); // couleur = UL Score semaine precedente (comme la carte Monday)
+    ensureUlHistory(c); // garantit c.ulHistory / c._ulStart avant le calcul couleur
+    var ulPrev=lastCompletedUL(c); // couleur = UL Score derniere semaine completee (comme la carte)
     var ring=ulGradColor(ulPrev);
     var first=c.name.split(" ")[0];
     var pillCheck=isPlanLocked(c.uid)
