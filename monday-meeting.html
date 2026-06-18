@@ -88,6 +88,7 @@ if (/[?&](ro|lecture)=1/.test(location.search)) { document.body.classList.add('r
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div id="pills" style="display:flex;gap:10px;flex-wrap:nowrap;overflow-x:auto;flex:1 1 auto;min-width:0;padding:8px 2px 6px"></div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <button onclick="shuffleConsultants()" title="Mélanger l'ordre des consultants" style="width:32px;height:32px;border-radius:50%;background:none;border:1px solid #334155;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:14px">&#128256;</button>
           <button onclick="prevC()" style="width:32px;height:32px;border-radius:50%;background:none;border:1px solid #334155;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8">&#8592;</button>
           <span id="counter" style="font-size:13px;color:#94a3b8"></span>
           <button onclick="nextC()" style="width:32px;height:32px;border-radius:50%;background:none;border:1px solid #334155;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8">&#8594;</button>
@@ -814,18 +815,24 @@ function validatePlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,String
 function unlockPlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,""); }catch(e){} buildPills(); renderCard(gIdx); }
 function renderFcastSummary(uid) {
   var entries=getFcastEntries(uid,[]);
-  var pot=0, pond=0;
+  var potDec=getPotDecisions();
+  var pot=0, pond=0, dealed=0;
   entries.forEach(function(e,i){
     var caEl=document.getElementById("fcastca-"+uid+"-"+i);
     var pctEl=document.getElementById("fcastpct-"+uid+"-"+i);
     var ca=caEl?parseInt(caEl.value)||0:e.ca;
     var pct=pctEl?parseInt(pctEl.value)||0:e.pct;
+    var st=potDec[fcastKey(uid,i,e.candidat)];
+    if(st==='deal'){ dealed+=ca; return; }   // dealé -> sa propre case
+    if(st==='nogo'){ return; }                // no go -> exclu
     pot+=ca; pond+=Math.round((pct/100)*ca);
   });
   var elPot=document.getElementById("fcast-pot-"+uid);
   var elPond=document.getElementById("fcast-pond-"+uid);
+  var elDeal=document.getElementById("fcast-deal-"+uid);
   if(elPot) elPot.textContent=fmtEur(pot);
   if(elPond) elPond.textContent=fmtEur(pond);
+  if(elDeal) elDeal.textContent=fmtEur(dealed);
 }
 
 function getMondayLabel() {
@@ -866,6 +873,11 @@ function buildPills() {
 function goTo(i) { gIdx=i; buildPills(); renderCard(i); window.scrollTo({top:0,behavior:"smooth"}); }
 function nextC() { goTo((gIdx+1)%DATA_SUMMARY.length); }
 function prevC() { goTo((gIdx-1+DATA_SUMMARY.length)%DATA_SUMMARY.length); }
+// Mélange aléatoire de l'ordre d'affichage des consultants (Fisher-Yates, local)
+function shuffleConsultants(){
+  for(var i=DATA_SUMMARY.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=DATA_SUMMARY[i]; DATA_SUMMARY[i]=DATA_SUMMARY[j]; DATA_SUMMARY[j]=t; }
+  gIdx=0; buildPills(); renderCard(0); window.scrollTo({top:0,behavior:"smooth"});
+}
 
 // OBJECTIVES MODAL
 function openObj(uid) {
@@ -916,7 +928,7 @@ function expandJobs(uid) {
     var hLabel=jItw.length>=3?"Bon":jItw.length>=1?"Moyen":"Vide";
     var isCold=/cold/i.test(j.status||"");
     var stColor=isCold?"#60a5fa":"#34d399", stBg=isCold?"rgba(96,165,250,0.12)":"rgba(16,185,129,0.12)", stBd=isCold?"rgba(96,165,250,0.35)":"rgba(16,185,129,0.35)";
-    var stBadge=' <span style="font-size:10px;font-weight:700;color:'+stColor+';background:'+stBg+';border:1px solid '+stBd+';padding:1px 6px;border-radius:5px;white-space:nowrap">'+((j.status||"").trim()||"Open")+'</span>';
+    var stBadge=' <span style="font-size:10px;font-weight:700;color:'+stColor+';background:'+stBg+';border:1px solid '+stBd+';padding:1px 6px;border-radius:5px;white-space:nowrap">'+(isCold?"Cold":"Hot")+'</span>';
     rows+='<tr style="border-top:1px solid #2d3748">'
       +'<td style="padding:8px 8px 8px 0"><div style="font-weight:600;color:#e0e7ff;line-height:1.3">'+j.job+stBadge+'</div><div style="font-size:11px;color:#94a3b8">'+j.client+'</div></td>'
       +'<td style="text-align:center;color:#94a3b8">'+jItw.length+'</td>'
@@ -955,7 +967,9 @@ function closeTeam() { g("team-modal").style.display="none"; }
 // ---- Récap texte à copier dans Slack ----
 function recapWeekNum(){ var d=new Date(),day=d.getDay(),add=(day===1)?0:((8-day)%7),m=new Date(d); m.setDate(d.getDate()+add); return _isoWeek(m); }
 function buildRecapText(){
-  var lines=[":calendar: *Réunion du Lundi — Semaine "+recapWeekNum()+"*",""];
+  // Texte brut lisible tel quel dans Slack (pas de markdown : Slack ne l'interprete
+  // pas au collage). Nom en MAJUSCULES en guise de titre + puces.
+  var lines=["📅 RÉUNION DU LUNDI — SEMAINE "+recapWeekNum(),""];
   var any=false;
   DATA_SUMMARY.forEach(function(c){
     var obj=getObj(c.uid);
@@ -963,11 +977,11 @@ function buildRecapText(){
       .filter(function(t){ return t && t!=="Nouvel objectif..." && t!=="Nouvel objectif…"; });
     if(!items.length) return;
     any=true;
-    lines.push("*"+c.name.split(" ")[0]+"*"+(c.team?" ("+c.team+")":""));
-    items.forEach(function(t){ lines.push("• "+t); });
+    lines.push("👤 "+c.name.split(" ")[0].toUpperCase()+(c.team?" — "+c.team:""));
+    items.forEach(function(t){ lines.push("   • "+t); });
     lines.push("");
   });
-  if(!any) lines.push("_Aucun objectif saisi pour le moment._");
+  if(!any) lines.push("Aucun objectif saisi pour le moment.");
   return lines.join("\n").trim();
 }
 function openRecap(){
@@ -1229,7 +1243,7 @@ function renderCard(i) {
       var hLabel=jItw.length>=3?"Bon":jItw.length>=1?"Moyen":"Vide";
       var isCold=/cold/i.test(j.status||"");
       var stColor=isCold?"#60a5fa":"#34d399", stBg=isCold?"rgba(96,165,250,0.12)":"rgba(16,185,129,0.12)", stBd=isCold?"rgba(96,165,250,0.35)":"rgba(16,185,129,0.35)";
-      var stLbl=(j.status||"").trim()||"Open";
+      var stLbl=isCold?"Cold":"Hot";
       var stBadge=' <span style="font-size:10px;font-weight:700;color:'+stColor+';background:'+stBg+';border:1px solid '+stBd+';padding:1px 6px;border-radius:5px;white-space:nowrap">'+stLbl+'</span>';
       rows+='<tr style="border-top:1px solid #2d3748">'
         +'<td style="padding:8px 8px 8px 0"><div style="font-weight:600;color:#e0e7ff;line-height:1.3">'+j.job+stBadge+'</div><div style="font-size:11px;color:#94a3b8">'+j.client+'</div></td>'
@@ -1250,10 +1264,11 @@ function renderCard(i) {
   // Seed local-only (PAS de push cloud) : ne pas écraser les saisies partagées
   if(!localStorage.getItem("fcastentries_"+uid)) _lsSet("fcastentries_"+uid, JSON.stringify(fcastEntries));
   var potDec=getPotDecisions();
-  var initPot=0, initPond=0;
+  var initPot=0, initPond=0, initDeal=0;
   fcastEntries.forEach(function(e,fi){
     var st=potDec[fcastKey(uid,fi,e.candidat)];
-    if(st==='deal'||st==='nogo') return; // tranches -> sortis du forecast
+    if(st==='deal'){ initDeal+=e.ca; return; } // dealé -> case dédiée
+    if(st==='nogo') return;                    // no go -> exclu
     initPot+=e.ca; initPond+=Math.round((e.pct/100)*e.ca);
   });
   var forecastHtml='';
@@ -1297,9 +1312,10 @@ function renderCard(i) {
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">'
     +'<div><div style="font-size:13px;font-weight:600;color:#cbd5e1;margin-bottom:12px">Jobs actifs ('+cJobs.length+')</div>'+jobsHtml+'</div>'
     +'<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:600;color:#cbd5e1">Forecast potentiels</span><button onclick="addFcastEntry(\''+uid+'\')" style="background:#7C3AED;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter</button><button onclick="resetFcastEntries(\''+uid+'\')" style="background:none;color:#94a3b8;border:1px solid #334155;padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;margin-left:4px" title="Réinitialiser depuis le pipeline">↺</button></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
     +'<div style="background:#0f172a;border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#94a3b8;margin-bottom:4px">CA Potentiel</div><div id="fcast-pot-'+uid+'" style="font-size:13px;font-weight:700;color:#2563EB">'+fmtEur(initPot)+'</div></div>'
     +'<div style="background:#0f172a;border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#94a3b8;margin-bottom:4px">CA Pondere</div><div id="fcast-pond-'+uid+'" style="font-size:13px;font-weight:700;color:#7C3AED">'+fmtEur(initPond)+'</div></div>'
+    +'<div style="background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.30);border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#94a3b8;margin-bottom:4px">CA Dealé</div><div id="fcast-deal-'+uid+'" style="font-size:13px;font-weight:700;color:#34d399">'+fmtEur(initDeal)+'</div></div>'
     +'</div>'+forecastHtml+'</div></div>';
   d.appendChild(pipeCard);
 
@@ -1754,6 +1770,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v21</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v22</div>
 </body>
 </html>
