@@ -902,13 +902,13 @@ function advanceWeek(){
   var base=Math.max(Date.now(), getForceTs());
   try{ localStorage.setItem("forcets", String(base + 7*86400000)); }catch(e){}
   rollAllPlans();               // archive les plans comme un lundi
-  renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx);
+  renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx); loadMondayData();
 }
 function revertWeek(){
   if(!confirm("Revenir à la semaine réelle ? (annule la bascule forcée et restaure les plans)")) return;
   try{ localStorage.setItem("forcets","0"); }catch(e){}
   _restoreWeekUndo();
-  renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx);
+  renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx); loadMondayData();
 }
 function renderWeekBtn(){
   var el=g("week-btn"); if(!el) return;
@@ -1597,7 +1597,16 @@ function buildAllboard(rows){
   function val(row,w,m){ var c=colmap[w+"|"+m]; return c!=null?num(row[c]):0; }
   var weeks=[]; for(var k in colmap){ var w=parseInt(k.split("|")[0],10); if(weeks.indexOf(w)<0) weeks.push(w); }
   weeks.sort(function(a,b){return a-b;});
-  var last=_targetWeek(weeks); // semaine precedente, jamais la semaine en cours
+  // On ne garde que les semaines REMPLIES (activité > 0). Les colonnes futures vides
+  // (semaine en cours pas encore extraite) sont ignorées -> pas de stats à zéro quand
+  // on force la semaine suivante avant que le Sheet ne soit à jour.
+  var weeksWithData=[];
+  weeks.forEach(function(w){
+    var tot=0;
+    for(var ci=0;ci<cons.length;ci++){ tot+=val(cons[ci],w,"1STITW")+val(cons[ci],w,"OTHITW")+val(cons[ci],w,"CVSENT")+val(cons[ci],w,"PRESC"); }
+    if(tot>0) weeksWithData.push(w);
+  });
+  var last=_targetWeek(weeksWithData.length?weeksWithData:weeks); // dernière semaine avec données, < semaine effective
   if(!last) return;
   // Construit dans un objet TEMP, puis ne remplace que si le résultat est complet.
   // Évite qu'un CSV transitoire/partiel ne vide les stats (flicker à zéro).
@@ -1812,6 +1821,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v23</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v24</div>
 </body>
 </html>
