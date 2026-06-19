@@ -1078,21 +1078,31 @@ function loadProcessData() {
     .catch(function(err){ console.error('Echec chargement résumé (process):', err); });
 }
 
+function loadDashboard(attempt) {
+  attempt = attempt || 1;
+  // anti-cache + timeout : la publication dashboard répond parfois lentement/mal
+  var url = SHEET_CSV_URL + '&_=' + Date.now();
+  var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+  var to = ctrl ? setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 12000) : null;
+  fetch(url, { cache: 'no-store', signal: ctrl?ctrl.signal:undefined })
+    .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+    .then(function(text){
+      if(to) clearTimeout(to);
+      rebuildFromCSV(parseCSV(text));
+      renderAllBoard();
+      setText('data-status', 'Mis à jour à ' + new Date().toLocaleTimeString());
+    })
+    .catch(function(err){
+      if(to) clearTimeout(to);
+      console.error('Echec chargement Sheet (essai '+attempt+'):', err);
+      if(attempt < 3){ setTimeout(function(){ loadDashboard(attempt+1); }, 1500); }
+      else setText('data-status', 'Hors ligne — données en cache');
+    });
+}
 function loadData() {
   loadProcessData();
   loadEvo();
-  fetch(SHEET_CSV_URL, { cache: 'no-store' })
-    .then(function(res){ if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
-    .then(function(text){
-      rebuildFromCSV(parseCSV(text));
-      renderAllBoard();
-      var t = new Date();
-      setText('data-status', 'Mis à jour à ' + t.toLocaleTimeString());
-    })
-    .catch(function(err){
-      console.error('Echec chargement Sheet:', err);
-      setText('data-status', 'Hors ligne — données en cache');
-    });
+  loadDashboard(1);
 }
 
 // Lecture seule : propage ?ro=1 à l'iframe Monday + masque les boutons de décision potentiels
