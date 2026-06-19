@@ -78,6 +78,7 @@ if (/[?&](ro|lecture)=1/.test(location.search)) { document.body.classList.add('r
         <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         Vue equipe
       </button>
+      <div id="week-btn" class="ro-hide" style="display:flex;align-items:center"></div>
       <button class="ro-hide" onclick="openRecap()" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:white;border:none;padding:6px 14px;border-radius:8px;background:#7C3AED;cursor:pointer">&#128203; Récap Slack</button>
       <button onclick="window.print()" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#cbd5e1;border:1px solid #334155;padding:6px 14px;border-radius:8px;background:#1e293b;cursor:pointer">Exporter</button>
     </div>
@@ -170,7 +171,7 @@ var RO = /[?&](ro|lecture)=1/.test(location.search);
 var _lsGet = localStorage.getItem.bind(localStorage);
 var _lsSet = localStorage.setItem.bind(localStorage);
 // Seules les vraies saisies utilisateur sont partagées (ulhist_/wstat_ = caches dérivés du sheet, non synchronisés)
-function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|planlock_|fcastentries_|fcastdismiss_|note_|team_|pot_decisions)/.test(k); }
+function _isSyncKey(k){ return /^(obj_|plan_|planitems_|plannext_|planpast_|planlock_|fcastentries_|fcastdismiss_|note_|team_|pot_decisions|forcets|weekundo)/.test(k); }
 var _wq={};
 function _queueWrite(k,v){
   if(RO) return; // lecture seule : aucune écriture cloud
@@ -240,7 +241,7 @@ function _syncInit(onReady){
           var k=ch.doc.id, v=ch.doc.data().v;
           if(v!=null && _lsGet(k)!==v){ _lsSet(k,v); changed=true; }
         });
-        if(changed){ try{ buildPills(); renderCard(gIdx); }catch(e){} }
+        if(changed){ try{ renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx); }catch(e){} }
       });
     }catch(e){}
   });
@@ -619,7 +620,7 @@ function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
 function lastCompletedUL(c){
   var hist=(c&&c.ulHistory||[]).slice();
   if(!hist.length) return udisp(c);
-  var cur=_isoWeek(new Date());
+  var cur=_isoWeek(_effNow());
   var wk=(cur!=null?cur:((c.sem||1)+1))-1;
   var start=(c._ulStart!=null)?c._ulStart:((c.sem||wk)-hist.length+1);
   var idx=wk-start;
@@ -740,7 +741,14 @@ function isoWeekId(d){
   var wk=Math.ceil((((d-yStart)/86400000)+1)/7);
   return d.getUTCFullYear()*100+wk; // ex: 202623, comparable numeriquement
 }
-function curWeekId(){ return isoWeekId(new Date()); }
+// --- Semaine "effective" : permet de FORCER le passage à la semaine suivante avant
+// le lundi. On stocke un timestamp cible (forcets) ; tant que l'heure réelle ne l'a
+// pas dépassé, l'app se comporte comme si on était à cette date. Partagé (forcets).
+function getForceTs(){ var v=parseInt(localStorage.getItem('forcets')||'0',10); return isNaN(v)?0:v; }
+function _effNow(){ return new Date(Math.max(Date.now(), getForceTs())); }
+function _effWeekNum(){ return _isoWeek(_effNow()); }
+function weekForced(){ return getForceTs() > Date.now(); }
+function curWeekId(){ return isoWeekId(_effNow()); }
 function defaultPlanItems(obj){
   return [
     {text:"Envoyer "+obj.cv+" CV",checked:false},
@@ -810,8 +818,8 @@ function removePlanItem(uid,which,idx){ var obj=getObj(uid),pl=planListGet(uid,o
 // On stocke la semaine ISO de validation. La fiche reste verrouillee tant qu'on est
 // dans cette meme semaine ISO ; au passage a la semaine suivante elle se rouvre seule.
 function getPlanLock(uid){ try{ return localStorage.getItem("planlock_"+uid)||""; }catch(e){ return ""; } }
-function isPlanLocked(uid){ var w=getPlanLock(uid); return !!w && w===String(_isoWeek(new Date())); }
-function validatePlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,String(_isoWeek(new Date()))); }catch(e){} buildPills(); renderCard(gIdx); }
+function isPlanLocked(uid){ var w=getPlanLock(uid); return !!w && w===String(_isoWeek(_effNow())); }
+function validatePlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,String(_isoWeek(_effNow()))); }catch(e){} buildPills(); renderCard(gIdx); }
 function unlockPlanWeek(uid){ try{ localStorage.setItem("planlock_"+uid,""); }catch(e){} buildPills(); renderCard(gIdx); }
 function renderFcastSummary(uid) {
   var entries=getFcastEntries(uid,[]);
@@ -837,7 +845,7 @@ function renderFcastSummary(uid) {
 
 function getMondayLabel() {
   // Affiche le lundi de la reunion : aujourd'hui si on est lundi, sinon le prochain lundi
-  var d=new Date(), day=d.getDay();
+  var d=_effNow(), day=d.getDay();
   var add=(day===1)?0:((8-day)%7);
   var m=new Date(d); m.setDate(d.getDate()+add);
   var s=m.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
@@ -877,6 +885,39 @@ function prevC() { goTo((gIdx-1+DATA_SUMMARY.length)%DATA_SUMMARY.length); }
 function shuffleConsultants(){
   for(var i=DATA_SUMMARY.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=DATA_SUMMARY[i]; DATA_SUMMARY[i]=DATA_SUMMARY[j]; DATA_SUMMARY[j]=t; }
   gIdx=0; buildPills(); renderCard(0); window.scrollTo({top:0,behavior:"smooth"});
+}
+// --- Forcer le passage à la semaine suivante (avant le lundi) ---
+function _saveWeekUndo(){
+  var snap={};
+  Object.keys(localStorage).forEach(function(k){ if(/^(plannext_|planpast_)/.test(k)) snap[k]=localStorage.getItem(k); });
+  try{ localStorage.setItem("weekundo", JSON.stringify(snap)); }catch(e){}
+}
+function _restoreWeekUndo(){
+  try{ var snap=JSON.parse(localStorage.getItem("weekundo")||"{}"); Object.keys(snap).forEach(function(k){ localStorage.setItem(k, snap[k]); }); }catch(e){}
+}
+function advanceWeek(){
+  var s=weekForced()?"Tu es déjà sur une semaine forcée. Avancer encore d'une semaine ?":"Forcer le passage à la semaine suivante maintenant ?\n\nLes plans d'action seront archivés (→ semaine passée) et les stats/UL passeront à la semaine suivante. Réversible via « Revenir ».";
+  if(!confirm(s)) return;
+  _saveWeekUndo();
+  var base=Math.max(Date.now(), getForceTs());
+  try{ localStorage.setItem("forcets", String(base + 7*86400000)); }catch(e){}
+  rollAllPlans();               // archive les plans comme un lundi
+  renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx);
+}
+function revertWeek(){
+  if(!confirm("Revenir à la semaine réelle ? (annule la bascule forcée et restaure les plans)")) return;
+  try{ localStorage.setItem("forcets","0"); }catch(e){}
+  _restoreWeekUndo();
+  renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx);
+}
+function renderWeekBtn(){
+  var el=g("week-btn"); if(!el) return;
+  if(weekForced()){
+    el.innerHTML='<span style="font-size:12px;color:#fbbf24;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);padding:6px 10px;border-radius:8px;font-weight:600">⏩ Semaine S'+_effWeekNum()+' (forcée)</span>'
+      +'<button onclick="revertWeek()" style="margin-left:6px;font-size:13px;font-weight:600;color:#94a3b8;border:1px solid #334155;padding:6px 12px;border-radius:8px;background:#1e293b;cursor:pointer">↩ Revenir</button>';
+  } else {
+    el.innerHTML='<button onclick="advanceWeek()" title="Passer à la semaine suivante (préparer la réunion avant lundi)" style="font-size:13px;font-weight:600;color:#cbd5e1;border:1px solid #334155;padding:6px 12px;border-radius:8px;background:#1e293b;cursor:pointer">⏭ Semaine suivante</button>';
+  }
 }
 
 // OBJECTIVES MODAL
@@ -965,7 +1006,7 @@ function showTeam() {
 function closeTeam() { g("team-modal").style.display="none"; }
 
 // ---- Récap texte à copier dans Slack ----
-function recapWeekNum(){ var d=new Date(),day=d.getDay(),add=(day===1)?0:((8-day)%7),m=new Date(d); m.setDate(d.getDate()+add); return _isoWeek(m); }
+function recapWeekNum(){ var d=_effNow(),day=d.getDay(),add=(day===1)?0:((8-day)%7),m=new Date(d); m.setDate(d.getDate()+add); return _isoWeek(m); }
 function buildRecapText(){
   // Texte brut lisible tel quel dans Slack (pas de markdown : Slack ne l'interprete
   // pas au collage). Nom en MAJUSCULES en guise de titre + puces.
@@ -1022,7 +1063,7 @@ function renderCard(i) {
   // de semaine), au lieu de retirer aveuglement le dernier point : si le Sheet n'a
   // pas encore de ligne pour la semaine en cours, retirer le dernier point ferait
   // afficher l'avant-derniere semaine (bug : "5" sem.23 etiquete "Semaine 24").
-  var ulCurWeek = _isoWeek(new Date());
+  var ulCurWeek = _isoWeek(_effNow());
   var ulHistAll = (c.ulHistory||[]).slice();
   var ulWeek = (ulCurWeek!=null ? ulCurWeek : ((c.sem||1)+1)) - 1; // derniere semaine completee
   var ulStartW = (c._ulStart!=null) ? c._ulStart : ((c.sem||ulWeek) - ulHistAll.length + 1);
@@ -1532,7 +1573,7 @@ function _isoWeek(d){ d=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate
 // la semaine en cours. On choisit donc la derniere semaine disponible qui est
 // strictement anterieure a la semaine ISO du jour.
 function _targetWeek(weeks){
-  var cur=_isoWeek(new Date());
+  var cur=_isoWeek(_effNow());
   var best=0;
   for(var i=0;i<weeks.length;i++){ var w=weeks[i]; if(w<cur && w>best) best=w; }
   if(best) return best;            // cas normal
@@ -1724,7 +1765,7 @@ function resetAllPlanNextOnce(){
 
 // INIT
 // ===== LECTURE SEULE : neutralise l'édition dans l'UI (les écritures cloud sont déjà coupées) =====
-var _RO_EDIT_RE=/addFcastEntry|updateFcastEntry|removeFcastEntry|fcastDecide|fcastRevert|resetFcastEntries|saveObj|resetObj|openObj|togglePlanItem|updatePlanItem|addPlanItem|removePlanItem|validatePlanWeek|unlockPlanWeek/;
+var _RO_EDIT_RE=/addFcastEntry|updateFcastEntry|removeFcastEntry|fcastDecide|fcastRevert|resetFcastEntries|saveObj|resetObj|openObj|togglePlanItem|updatePlanItem|addPlanItem|removePlanItem|validatePlanWeek|unlockPlanWeek|advanceWeek|revertWeek/;
 function applyRO(){
   if(!RO) return;
   document.querySelectorAll('[contenteditable="true"]').forEach(function(e){ e.setAttribute('contenteditable','false'); });
@@ -1751,6 +1792,7 @@ document.addEventListener("DOMContentLoaded", function(){
       attachNav();
       g("top-date").textContent=getMondayLabel();
       g("data-status").textContent="Chargement…";
+      renderWeekBtn();
       buildPills();
       renderCard(0);
       loadMondayData();
@@ -1770,6 +1812,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v22</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v23</div>
 </body>
 </html>
