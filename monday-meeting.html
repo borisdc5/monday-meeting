@@ -1740,27 +1740,20 @@ function _csvOk(text, mustHave){
 }
 function loadMondayData() {
   function grab(u){ return fetch(u, { cache: 'no-store' }).then(function(r){ return r.ok ? r.text() : ""; }).catch(function(){ return ""; }); }
-  Promise.all([ grab(MM_URLS.summary), grab(MM_URLS.itw), grab(MM_URLS.jobs), grab(MM_URLS.matrix), grab(MM_URLS.calls), grab(MM_URLS.ulmois) ])
-  .then(function(texts){
-    var applied=0;
-    if(_csvOk(texts[0],'Consultant')){ mergeSummary(parseCSV(texts[0])); applied++; }
-    if(_csvOk(texts[1],'User ID'))   { DATA_ITW  = buildItw(parseCSV(texts[1])); applied++; }
-    if(_csvOk(texts[2],'User ID'))   { DATA_JOBS = buildJobs(parseCSV(texts[2])); applied++; }
-    if(_csvOk(texts[3],'PRESC'))     { buildAllboard(parseCSV(texts[3])); applied++; }
-    if(_csvOk(texts[4],'Call Type')) { buildCalls(parseCSV(texts[4])); applied++; }
-    if(_csvOk(texts[5],'UL SCORE MOIS')){ buildUlMois(parseCSV(texts[5])); applied++; }
+  // Chargement INCRÉMENTAL : chaque source s'affiche dès qu'elle arrive, sans attendre
+  // les autres (évite qu'une publication Google lente ne bloque tout l'affichage).
+  var stamped=false;
+  function refresh(){
     DATA_SUMMARY.forEach(function(c){ ensureUlHistory(c); ensureWStat(c); });
-    buildPills();
-    renderCard(gIdx);
-    if(applied>0){
-      g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString();
-    } else {
-      g("data-status").textContent = "Données en cache (source momentanément indisponible)";
-    }
-  }).catch(function(err){
-    console.error("Echec chargement Monday Meeting:", err);
-    g("data-status").textContent = "Hors ligne — données en cache";
-  });
+    buildPills(); renderCard(gIdx);
+    if(!stamped){ g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString(); stamped=true; }
+  }
+  grab(MM_URLS.summary).then(function(t){ if(_csvOk(t,'Consultant')){ mergeSummary(parseCSV(t)); refresh(); } });
+  grab(MM_URLS.matrix ).then(function(t){ if(_csvOk(t,'PRESC')){ buildAllboard(parseCSV(t)); refresh(); } });
+  grab(MM_URLS.itw    ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_ITW = buildItw(parseCSV(t)); refresh(); } });
+  grab(MM_URLS.jobs   ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_JOBS = buildJobs(parseCSV(t)); refresh(); } });
+  grab(MM_URLS.calls  ).then(function(t){ if(_csvOk(t,'Call Type')){ buildCalls(parseCSV(t)); refresh(); } });
+  grab(MM_URLS.ulmois ).then(function(t){ if(_csvOk(t,'UL SCORE MOIS')){ buildUlMois(parseCSV(t)); refresh(); } });
 }
 
 // === Reset ponctuel des objectifs "semaine prochaine" (le haut "semaine passee" est conserve) ===
@@ -1833,6 +1826,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v26</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v27</div>
 </body>
 </html>
