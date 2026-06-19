@@ -618,6 +618,9 @@ function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
 // NUMERO de semaine dans l'historique. C'est la meme valeur que le headline de la
 // carte : on l'utilise aussi pour la couleur des pastilles du haut (coherence).
 function lastCompletedUL(c){
+  // la matrice fait foi si dispo (meme source que la carte UL et les tuiles)
+  var mx=(typeof MATRIX!=='undefined' && c)?MATRIX[c.uid]:null;
+  if(mx && mx.ulscore!=null) return mx.ulscore;
   var hist=(c&&c.ulHistory||[]).slice();
   if(!hist.length) return udisp(c);
   var cur=_isoWeek(_effNow());
@@ -1073,6 +1076,15 @@ function renderCard(i) {
   if(ulHistAll.length){ ulWeek = ulStartW + ulIdx; } // recale le libelle sur la semaine reellement affichee
   var ulFullHist = ulHistAll.length ? ulHistAll.slice(0, ulIdx+1) : []; // courbe jusqu'a la semaine affichee
   var ulShow = ulHistAll.length ? ulHistAll[ulIdx] : udisp(c);
+  // La matrice (onglet activite) est souvent en avance d'une semaine sur le resume :
+  // si elle a une valeur UL pour la semaine selectionnee, elle fait foi (coherence
+  // avec les tuiles + respect du forcage de semaine).
+  var _mx = (typeof MATRIX!=='undefined' && MATRIX[uid]) ? MATRIX[uid] : null;
+  if(_mx && _mx.week!=null && _mx.ulscore!=null){
+    ulShow = _mx.ulscore;
+    if(_mx.week>ulWeek) ulFullHist = ulFullHist.concat([_mx.ulscore]); // prolonge la courbe
+    ulWeek = _mx.week;
+  }
   var col = ulGradColor(ulShow);
   var caPct = pct(c.ca, obj.ca);
   var dealPct = pct(c.deals, obj.deals);
@@ -1821,6 +1833,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v24</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v25</div>
 </body>
 </html>
