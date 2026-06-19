@@ -1096,7 +1096,7 @@ function renderCard(i) {
 
   // ---- HEADER ----
   var header = document.createElement("div");
-  header.className="card";
+  header.className="card"; header.id="sec-reunion";
   var teamVal = getTeam(uid);
   var teamSelHtml = '<div style="padding:4px 8px;border:1px solid #334155;border-radius:6px;font-size:12px;color:#cbd5e1;background:#1e293b">'+c.team+'</div>';
   var validatedHdr = isPlanLocked(uid)
@@ -1229,6 +1229,7 @@ function renderCard(i) {
 
   // ---- CA + DEALS ----
   var caGrid = document.createElement("div");
+  caGrid.id="sec-objectifs";
   caGrid.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px";
   var caBg = caPct>=80?"#10B981":caPct>=40?"#F59E0B":"#475569";
   var dealBg = dealPct>=80?"#10B981":dealPct>=40?"#F59E0B":"#475569";
@@ -1251,7 +1252,7 @@ function renderCard(i) {
 
   // ---- ACTIVITE ----
   var actCard = document.createElement("div");
-  actCard.className="card";
+  actCard.className="card"; actCard.id="sec-activite";
   ensureWStat(c);
   var mx = MATRIX[uid] || {};
   var actWeek = (mx.week!=null)?mx.week:udweek(c); // derniere semaine completee
@@ -1284,6 +1285,7 @@ function renderCard(i) {
 
   // ---- PIPELINE ----
   var pipeCard = document.createElement("div");
+  pipeCard.id="sec-pipeline";
   pipeCard.className="card";
   var jobsHtml='<p style="font-size:13px;color:#94a3b8;font-style:italic">Aucun job actif</p>';
   window._jobsData = window._jobsData || {};
@@ -1538,7 +1540,10 @@ function navClick(id){
   document.querySelectorAll(".nav-item").forEach(function(el){el.classList.remove("active");});
   var el=document.querySelector('.nav-item[data-nav="'+id+'"]');
   if(el) el.classList.add("active");
-  if(id==="equipe") showTeam();
+  if(id==="equipe"){ showTeam(); return; }
+  if(id==="parametres"){ var c=DATA_SUMMARY[gIdx]; if(c) openObj(c.uid); return; }
+  var map={reunion:"sec-reunion",portefeuille:"sec-pipeline",pipeline:"sec-pipeline",objectifs:"sec-objectifs",activite:"sec-activite"};
+  var sec=map[id]; if(sec){ var t=g(sec); if(t) t.scrollIntoView({behavior:"smooth",block:"start"}); }
 }
 // Attach nav clicks after build
 function attachNav(){
@@ -1826,6 +1831,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v27</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v28</div>
 </body>
 </html>
