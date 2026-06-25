@@ -908,9 +908,10 @@ function advanceWeek(){
   renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx); loadMondayData();
 }
 function revertWeek(){
-  if(!confirm("Revenir à la semaine réelle ? (annule la bascule forcée et restaure les plans)")) return;
+  if(!confirm("Repasser à la semaine réelle ? (enlève juste l'affichage forcé, ne touche pas aux plans déjà saisis)")) return;
   try{ localStorage.setItem("forcets","0"); }catch(e){}
-  _restoreWeekUndo();
+  // NB: on NE restaure PLUS les plans : l'archivage fait lors du forçage est correct
+  // (identique au lundi). Restaurer écraserait le travail fait depuis.
   renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx); loadMondayData();
 }
 function renderWeekBtn(){
@@ -1831,6 +1832,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v29</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v30</div>
 </body>
 </html>
