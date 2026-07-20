@@ -614,23 +614,9 @@ function prevWeekUL(c){
   return h.length? h[h.length-1] : udisp(c);
 }
 function udweek(c){ return (c.ulDisplayWeek!=null)?c.ulDisplayWeek:c.sem; }
-// Score de la derniere semaine COMPLETEE (= semaine ISO du jour - 1), cherche par
-// NUMERO de semaine dans l'historique. C'est la meme valeur que le headline de la
-// carte : on l'utilise aussi pour la couleur des pastilles du haut (coherence).
-function lastCompletedUL(c){
-  // la matrice fait foi si dispo (meme source que la carte UL et les tuiles)
-  var mx=(typeof MATRIX!=='undefined' && c)?MATRIX[c.uid]:null;
-  if(mx && mx.ulscore) return mx.ulscore;   // truthy : pas de 0 transitoire (cellule vide en cache)
-  var hist=(c&&c.ulHistory||[]).slice();
-  if(!hist.length) return udisp(c);
-  var cur=_isoWeek(_effNow());
-  var wk=(cur!=null?cur:((c.sem||1)+1))-1;
-  var start=(c._ulStart!=null)?c._ulStart:((c.sem||wk)-hist.length+1);
-  var idx=wk-start;
-  if(idx>hist.length-1) idx=hist.length-1;
-  if(idx<0) idx=0;
-  return hist[idx];
-}
+// UL Score de la semaine (onglet ALL DATA, col 6) : sert au headline de la carte
+// ET à la couleur des pastilles du haut (source unique, cohérent).
+function lastCompletedUL(c){ return udisp(c); }
 
 // Meetings & Calls ne sont PAS dans la matrice : on les snapshote depuis le sheet resume,
 // pour conserver la valeur de la derniere semaine completee malgre le reset du lundi.
@@ -1060,32 +1046,10 @@ function renderCard(i) {
   ensureUlHistory(c);
   var plan = getPlan(uid);
   var note = getNote(uid);
-  // Monday Meeting : on passe en revue la semaine PRECEDENTE. Le UL Score affiche
-  // donc la derniere semaine COMPLETEE = semaine ISO du jour - 1 (meme horloge que
-  // les tuiles d'activite, bascule pile le lundi 00h00, independant du Sheet).
-  // On va CHERCHER le score de cette semaine precise dans l'historique (par numero
-  // de semaine), au lieu de retirer aveuglement le dernier point : si le Sheet n'a
-  // pas encore de ligne pour la semaine en cours, retirer le dernier point ferait
-  // afficher l'avant-derniere semaine (bug : "5" sem.23 etiquete "Semaine 24").
-  var ulCurWeek = _isoWeek(_effNow());
-  var ulHistAll = (c.ulHistory||[]).slice();
-  var ulWeek = (ulCurWeek!=null ? ulCurWeek : ((c.sem||1)+1)) - 1; // derniere semaine completee
-  var ulStartW = (c._ulStart!=null) ? c._ulStart : ((c.sem||ulWeek) - ulHistAll.length + 1);
-  var ulIdx = ulWeek - ulStartW;
-  if(ulIdx > ulHistAll.length-1) ulIdx = ulHistAll.length-1; // pas de donnee plus recente : on prend la derniere connue
-  if(ulIdx < 0) ulIdx = 0;
-  if(ulHistAll.length){ ulWeek = ulStartW + ulIdx; } // recale le libelle sur la semaine reellement affichee
-  var ulFullHist = ulHistAll.length ? ulHistAll.slice(0, ulIdx+1) : []; // courbe jusqu'a la semaine affichee
-  var ulShow = ulHistAll.length ? ulHistAll[ulIdx] : udisp(c);
-  // La matrice (onglet activite) est souvent en avance d'une semaine sur le resume :
-  // si elle a une valeur UL pour la semaine selectionnee, elle fait foi (coherence
-  // avec les tuiles + respect du forcage de semaine).
-  var _mx = (typeof MATRIX!=='undefined' && MATRIX[uid]) ? MATRIX[uid] : null;
-  if(_mx && _mx.week!=null && _mx.ulscore){   // ulscore truthy : évite d'écraser par un 0 transitoire (cellule vide en cache)
-    ulShow = _mx.ulscore;
-    if(_mx.week>ulWeek) ulFullHist = ulFullHist.concat([_mx.ulscore]); // prolonge la courbe
-    ulWeek = _mx.week;
-  }
+  // Source unique = onglet ALL DATA : UL Score (col 6) + semaine (col 13), directement.
+  var ulShow = udisp(c);                        // UL Score de la semaine
+  var ulWeek = c.sem || udweek(c);              // n° de semaine du recap
+  var ulFullHist = (c.ulHistory||[]).slice();   // courbe (historique + point courant)
   var col = ulGradColor(ulShow);
   var caPct = pct(c.ca, obj.ca);
   var dealPct = pct(c.deals, obj.deals);
@@ -1255,19 +1219,15 @@ function renderCard(i) {
   var actCard = document.createElement("div");
   actCard.className="card"; actCard.id="sec-activite";
   ensureWStat(c);
-  var mx = MATRIX[uid] || {};
-  var actWeek = (mx.week!=null)?mx.week:udweek(c); // derniere semaine completee
-  var mPresc  = (mx.presc!=null)   ? mx.presc    : 0;
-  var mCv     = (mx.cvsent!=null)  ? mx.cvsent   : 0;
-  var mFirst  = (mx.firstItw!=null)? mx.firstItw : (c.firstItw||0);
-  var mOther  = (mx.otherItw!=null)? mx.otherItw : 0;
+  // Source unique : onglet ALL DATA (via mergeSummary). Plus de matrice AllBoard.
+  var actWeek = c.sem || 0;
   var metricData = [
-    {lbl:"Prescreen",     val:mPresc,        color:"#0EA5E9", lo:3, hi:5},
-    {lbl:"CV sent",       val:mCv,           color:"#22C55E", lo:3, hi:5},
-    {lbl:"1eres ITW",     val:mFirst,        color:"#6366F1", lo:3, hi:5},
-    {lbl:"Autres ITW",    val:mOther,        color:"#8B5CF6", lo:3, hi:5},
-    {lbl:"Meetings",      val:((mx.meetings!=null)?mx.meetings:(c.dispMeeting||0)), color:"#F59E0B", lo:1, hi:2},
-    {lbl:"Calls Prospect",val:callsFor(c),    color:"#14B8A6", lo:10,hi:20}
+    {lbl:"Prescreen",     val:(c.presc||0),    color:"#0EA5E9", lo:3, hi:5},
+    {lbl:"CV sent",       val:(c.cvsent||0),   color:"#22C55E", lo:3, hi:5},
+    {lbl:"1eres ITW",     val:(c.firstItw||0), color:"#6366F1", lo:3, hi:5},
+    {lbl:"Autres ITW",    val:(c.otherItw||0), color:"#8B5CF6", lo:3, hi:5},
+    {lbl:"Meetings",      val:(c.meeting||0),  color:"#F59E0B", lo:1, hi:2},
+    {lbl:"Calls Prospect",val:(c.callAb||0),   color:"#14B8A6", lo:10,hi:20}
   ];
   var actHtml = '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Activite & Resultats — Semaine '+actWeek+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">';
@@ -1712,6 +1672,9 @@ function mergeSummary(rows) {
     c.deals     = toInt(cv(rows[r], 11));
     c.ca        = toInt(cv(rows[r], 12));
     c.sem       = toInt(cv(rows[r], 13));
+    c.presc     = toInt(cv(rows[r], 14)); // Prescreen
+    c.cvsent    = toInt(cv(rows[r], 15)); // CV Sent
+    c.otherItw  = toInt(cv(rows[r], 16)); // Other ITW
     // garde l'historique en base; cale le dernier point sur le score courant
     if (c.ulHistory && c.ulHistory.length) c.ulHistory[c.ulHistory.length - 1] = c.ulScore;
     else c.ulHistory = [c.ulScore];
@@ -1754,12 +1717,10 @@ function loadMondayData() {
     buildPills(); renderCard(gIdx);
     if(!stamped){ g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString(); stamped=true; }
   }
+  // Source unique des stats = onglet ALL DATA (summary). itw = détail process/jobs. jobs = liste + statut.
   grab(MM_URLS.summary).then(function(t){ if(_csvOk(t,'Consultant')){ mergeSummary(parseCSV(t)); refresh(); } });
-  grab(MM_URLS.matrix ).then(function(t){ if(_csvOk(t,'PRESC')){ buildAllboard(parseCSV(t)); refresh(); } });
   grab(MM_URLS.itw    ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_ITW = buildItw(parseCSV(t)); refresh(); } });
   grab(MM_URLS.jobs   ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_JOBS = buildJobs(parseCSV(t)); refresh(); } });
-  grab(MM_URLS.calls  ).then(function(t){ if(_csvOk(t,'Call Type')){ buildCalls(parseCSV(t)); refresh(); } });
-  grab(MM_URLS.ulmois ).then(function(t){ if(_csvOk(t,'UL SCORE MOIS')){ buildUlMois(parseCSV(t)); refresh(); } });
 }
 
 // === Reset ponctuel des objectifs "semaine prochaine" (le haut "semaine passee" est conserve) ===
@@ -1832,6 +1793,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v30</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v31</div>
 </body>
 </html>
