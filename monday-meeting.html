@@ -1227,7 +1227,7 @@ function renderCard(i) {
     {lbl:"1eres ITW",     val:(c.firstItw||0), color:"#6366F1", lo:3, hi:5},
     {lbl:"Autres ITW",    val:(c.otherItw||0), color:"#8B5CF6", lo:3, hi:5},
     {lbl:"Meetings",      val:(c.meeting||0),  color:"#F59E0B", lo:1, hi:2},
-    {lbl:"Calls Prospect",val:(c.callAb||0),   color:"#14B8A6", lo:10,hi:20}
+    {lbl:"Calls Prospect",val:(c.callAb||0),   color:"#14B8A6", lo:10,hi:20, sub:"NA "+(c.callNA||0)}
   ];
   var actHtml = '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px">Activite & Resultats — Semaine '+actWeek+'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">';
@@ -1238,7 +1238,9 @@ function renderCard(i) {
       +'<div style="width:32px;height:32px;border-radius:8px;margin:0 auto 8px;background:'+m.color+'33;display:flex;align-items:center;justify-content:center">'
       +'<div style="width:12px;height:12px;border-radius:3px;background:'+m.color+'"></div></div>'
       +'<div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;line-height:1.3">'+m.lbl+'</div>'
-      +'<div style="font-size:22px;font-weight:900;color:'+textColor+'">'+m.val+'</div></div>';
+      +'<div style="font-size:22px;font-weight:900;color:'+textColor+'">'+m.val+'</div>'
+      +(m.sub?'<div style="font-size:10px;font-weight:700;color:#64748b;margin-top:2px">'+m.sub+'</div>':'')
+      +'</div>';
   });
   actHtml += '</div>';
   actCard.innerHTML=actHtml;
@@ -1793,6 +1795,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v31</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v32</div>
 </body>
 </html>
