@@ -1037,6 +1037,7 @@ function renderCard(i) {
   if(!c) { g("card").innerHTML="<p style='color:red'>Consultant introuvable</p>"; return; }
   var uid=c.uid, name=c.name;
   var cItw = DATA_ITW.filter(function(r){ return r.uid===uid; });
+  var procCount = cItw.length; // Process en cours = nb de lignes de l'onglet "stagging process"
   var cJobs = DATA_JOBS.filter(function(r){ return r.uid===uid; });
   var otherItw = cItw.filter(function(r){ var s=r.stage.toLowerCase(); return s.indexOf("2nd")>=0||s.indexOf("3rd")>=0||s.indexOf("4th")>=0||s.indexOf("5th")>=0||s.indexOf("final")>=0; }).length;
   var finalItw = cItw.filter(function(r){ return r.stage.toLowerCase().indexOf("final")>=0; });
@@ -1089,13 +1090,13 @@ function renderCard(i) {
   var kpiGrid = document.createElement("div");
   kpiGrid.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px";
   var probPct=Math.min(100,Math.round(caPct*1.2));
-  var procCol=procGradColor(c.nbProcess);
-  var procBadgeCls=c.nbProcess>=9?"badge-green":c.nbProcess>=5?"badge-orange":"badge-red";
-  var procBadgeLbl=c.nbProcess>=9?"Bon rythme":c.nbProcess>=5?"A suivre":"A surveiller";
+  var procCol=procGradColor(procCount);
+  var procBadgeCls=procCount>=9?"badge-green":procCount>=5?"badge-orange":"badge-red";
+  var procBadgeLbl=procCount>=9?"Bon rythme":procCount>=5?"A suivre":"A surveiller";
   // Build process range bar (axis 0-10-20+, color gradient maxing fluo green at 20+)
   var procMax=20;
   var procBarW=160;
-  var procPos=Math.min(c.nbProcess,procMax)/procMax*procBarW;
+  var procPos=Math.min(procCount,procMax)/procMax*procBarW;
   var procGradId='pg'+uid;
   var procStops='';
   [0,0.25,0.5,0.75,1].forEach(function(o){
@@ -1144,7 +1145,7 @@ function renderCard(i) {
   kpiGrid.innerHTML =
     '<div class="card" style="margin-bottom:0">'
       +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;height:28px;display:flex;align-items:flex-start">Process en cours (Total)</div>'
-      +'<div style="font-size:40px;font-weight:900;margin-bottom:2px;color:'+procCol+'">'+c.nbProcess+'</div>'
+      +'<div style="font-size:40px;font-weight:900;margin-bottom:2px;color:'+procCol+'">'+procCount+'</div>'
       +'<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">Entretiens en cours &nbsp;<span class="badge '+procBadgeCls+'" style="font-size:10px;padding:2px 8px">'+procBadgeLbl+'</span></div>'
       +procRangeBar+'</div>'
     +'<div class="card" style="margin-bottom:0">'
@@ -1349,11 +1350,7 @@ function renderCard(i) {
     });
     var head='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
       +'<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">Process detailles</span>'
-      +'<span style="font-size:11px;color:#94a3b8">'+list.length+' liste'+(list.length>1?'s':'')+' &middot; compteur fiche : <b style="color:#cbd5e1">'+c.nbProcess+'</b></span></div>';
-    if(c.nbProcess!==list.length){
-      head+='<div style="font-size:11px;color:#fbbf24;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:7px 10px;margin-bottom:12px">'
-        +'Ecart entre le compteur ('+c.nbProcess+') et les process avec entretien ('+list.length+') : des process sont peut-etre a passer en "rejected".</div>';
-    }
+      +'<span style="font-size:11px;color:#94a3b8">'+list.length+' process en cours</span></div>';
     var body='';
     if(!list.length){
       body='<p style="font-size:12px;color:#64748b;font-style:italic">Aucun process avec entretien remonte pour ce consultant.</p>';
@@ -1795,6 +1792,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v32</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v33</div>
 </body>
 </html>
