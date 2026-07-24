@@ -1715,10 +1715,22 @@ function loadMondayData() {
     buildPills(); renderCard(gIdx);
     if(!stamped){ g("data-status").textContent = "Mis à jour à " + new Date().toLocaleTimeString(); stamped=true; }
   }
-  // Source unique des stats = onglet ALL DATA (summary). itw = détail process/jobs. jobs = liste + statut.
-  grab(MM_URLS.summary).then(function(t){ if(_csvOk(t,'Consultant')){ mergeSummary(parseCSV(t)); refresh(); } });
-  grab(MM_URLS.itw    ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_ITW = buildItw(parseCSV(t)); refresh(); } });
-  grab(MM_URLS.jobs   ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_JOBS = buildJobs(parseCSV(t)); refresh(); } });
+  // 1) On applique d'abord le DERNIER CACHE local (dernière bonne donnée) : évite de
+  //    retomber sur le seed codé en dur quand une source Google est momentanément KO.
+  try{ var cs=_lsGet('cache_summary'); if(cs&&_csvOk(cs,'Consultant')) mergeSummary(parseCSV(cs)); }catch(e){}
+  try{ var ci=_lsGet('cache_itw');     if(ci&&_csvOk(ci,'User ID'))    DATA_ITW=buildItw(parseCSV(ci)); }catch(e){}
+  try{ var cj=_lsGet('cache_jobs');    if(cj&&_csvOk(cj,'User ID'))    DATA_JOBS=buildJobs(parseCSV(cj)); }catch(e){}
+  try{ buildPills(); renderCard(gIdx); }catch(e){}
+  // 2) Puis on charge le LIVE (source = ALL DATA). Le summary est ré-essayé (tab instable).
+  function loadSummary(n){
+    grab(MM_URLS.summary).then(function(t){
+      if(_csvOk(t,'Consultant')){ mergeSummary(parseCSV(t)); try{_lsSet('cache_summary',t);}catch(e){} refresh(); }
+      else if(n<4){ setTimeout(function(){ loadSummary(n+1); }, 2000); }
+    });
+  }
+  loadSummary(1);
+  grab(MM_URLS.itw ).then(function(t){ if(_csvOk(t,'User ID')){ DATA_ITW = buildItw(parseCSV(t)); try{_lsSet('cache_itw',t);}catch(e){} refresh(); } });
+  grab(MM_URLS.jobs).then(function(t){ if(_csvOk(t,'User ID')){ DATA_JOBS = buildJobs(parseCSV(t)); try{_lsSet('cache_jobs',t);}catch(e){} refresh(); } });
 }
 
 // === Reset ponctuel des objectifs "semaine prochaine" (le haut "semaine passee" est conserve) ===
@@ -1791,6 +1803,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v35</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v36</div>
 </body>
 </html>
