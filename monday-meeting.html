@@ -656,6 +656,32 @@ function saveFcastEntries(uid,entries) { try { localStorage.setItem("fcastentrie
 function getPotDecisions() { try { return JSON.parse(localStorage.getItem("pot_decisions")||"{}")||{}; } catch(e){ return {}; } }
 function savePotDecisions(d) { try { localStorage.setItem("pot_decisions",JSON.stringify(d)); } catch(e){} }
 function fcastKey(uid,fi,candidat) { return uid+"|"+fi+"|"+(candidat||""); }
+// Nettoyage MENSUEL des potentiels : en début de mois, on retire ceux tranchés
+// (deal = validé / nogo = perdu) et on garde ceux encore en cours. Appelé au chargement,
+// une fois par mois (le 1er qui ouvre l'outil dans le nouveau mois).
+function currentMonthId(){ var d=new Date(); return d.getFullYear()*100 + (d.getMonth()+1); }
+function rollFcastMonth(){
+  var m=String(currentMonthId());
+  if(_lsGet('fcast_month')===m) return; // déjà nettoyé ce mois-ci
+  var dec=getPotDecisions();
+  Object.keys(localStorage).forEach(function(k){
+    if(k.indexOf('fcastentries_')!==0) return;
+    var uid=k.slice(13), entries;
+    try{ entries=JSON.parse(_lsGet(k)); }catch(e){ return; }
+    if(!Array.isArray(entries)) return;
+    var kept=[];
+    entries.forEach(function(e,i){
+      var st=dec[fcastKey(uid,i,e.candidat)];
+      if(st==='deal'||st==='nogo') return; // tranché -> supprimé
+      kept.push(e);
+    });
+    if(kept.length!==entries.length) saveFcastEntries(uid,kept); // sync cloud
+    // les gardés sont "en cours" -> on efface toutes les décisions de ce consultant
+    Object.keys(dec).forEach(function(dk){ if(dk.indexOf(uid+'|')===0) delete dec[dk]; });
+  });
+  savePotDecisions(dec);
+  try{ _lsSet('fcast_month', m); }catch(e){}
+}
 function fcastDecide(uid,fi,candidat,decision) {
   var key=fcastKey(uid,fi,candidat), d=getPotDecisions();
   if(d[key]===decision) delete d[key]; else d[key]=decision; // re-clic = annule
@@ -1778,7 +1804,8 @@ document.addEventListener("DOMContentLoaded", function(){
     try{
       /* resetAllPlanNextOnce(); -- désactivé : écrasait le plan d'action partagé.
          Le reset hebdo devra être une action manuelle coordonnée (à venir). */
-      if(!RO) rollAllPlans(); // bascule globale (jamais en lecture seule)
+      if(!RO) rollAllPlans();    // archive les plans (bascule hebdo)
+      if(!RO) rollFcastMonth();  // nettoie les potentiels tranchés (bascule mensuelle)
       buildNav();
       attachNav();
       g("top-date").textContent=getMondayLabel();
@@ -1803,6 +1830,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v36</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v37</div>
 </body>
 </html>
