@@ -509,6 +509,12 @@ function gradColor(r) {
 }
 function procGradColor(n) { return gradColor(n / 20); }
 function ulGradColor(s) { return gradColor(s / 30); }
+// Nb de semaines écoulées dans le mois calendaire courant (pour la moyenne hebdo du UL Mois)
+function weeksElapsedThisMonth(){
+  var d=new Date();
+  var w=_isoWeek(d) - _isoWeek(new Date(d.getFullYear(), d.getMonth(), 1)) + 1;
+  return w>0 ? w : 1;
+}
 function actColor(v,lo,hi) { return v>=hi?"#10B981":v>=lo?"#F59E0B":"#EF4444"; }
 function fmtEur(n) { return Number(n||0).toLocaleString("fr-FR") + " EUR"; }
 function pct(v,t) { return t ? Math.min(100,Math.round(v/t*100)) : 0; }
@@ -1151,7 +1157,7 @@ function renderCard(i) {
     +'<div class="card" style="margin-bottom:0">'
       +'<div style="height:28px;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">'
         +'<span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">UL Score</span>'
-        +(UL_MOIS[uid]!=null ? '<span title="Cumul UL Score du mois" style="font-size:11px;font-weight:700;color:#cbd5e1;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:2px 7px;white-space:nowrap">Mois '+UL_MOIS[uid]+'</span>' : '')
+        +((c.ulmois!=null && c.ulmois>0) ? '<span title="UL Score du mois (couleur = moyenne hebdo : mois / '+weeksElapsedThisMonth()+' sem.)" style="font-size:11px;font-weight:700;color:'+ulGradColor(c.ulmois/weeksElapsedThisMonth())+';background:#0f172a;border:1px solid #334155;border-radius:6px;padding:2px 7px;white-space:nowrap">Mois '+c.ulmois+'</span>' : '')
       +'</div>'
       +'<div style="font-size:40px;font-weight:900;margin-bottom:0;color:'+col+'">'+ulShow+'</div>'
       +'<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Semaine '+ulWeek+'</div>'
@@ -1674,6 +1680,7 @@ function mergeSummary(rows) {
     c.presc     = toInt(cv(rows[r], 14)); // Prescreen
     c.cvsent    = toInt(cv(rows[r], 15)); // CV Sent
     c.otherItw  = toInt(cv(rows[r], 16)); // Other ITW
+    c.ulmois    = toScore(cv(rows[r], 17)); // UL Mois (colonne R)
     // garde l'historique en base; cale le dernier point sur le score courant
     if (c.ulHistory && c.ulHistory.length) c.ulHistory[c.ulHistory.length - 1] = c.ulScore;
     else c.ulHistory = [c.ulScore];
@@ -1792,6 +1799,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v33</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v34</div>
 </body>
 </html>
