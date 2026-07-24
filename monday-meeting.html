@@ -611,7 +611,7 @@ function setUlDisplay(c){
   c.ulHistDisplay=hist.slice(0,di+1); // courbe jusqu'a la derniere semaine completee
 }
 // Accesseurs surs (avant que ensureUlHistory ait tourne, on retombe sur le score brut)
-function udisp(c){ return (c.ulDisplay!=null)?c.ulDisplay:c.ulScore; }
+function udisp(c){ return c.ulScore; } // UL Score de la semaine = colonne G de ALL DATA, uniquement
 // UL Score de la semaine PRECEDENTE (= ce qu'affiche la carte du Monday) : on retire
 // le dernier point (semaine en cours) de l'historique.
 function prevWeekUL(c){
@@ -739,8 +739,8 @@ function isoWeekId(d){
 // --- Semaine "effective" : permet de FORCER le passage à la semaine suivante avant
 // le lundi. On stocke un timestamp cible (forcets) ; tant que l'heure réelle ne l'a
 // pas dépassé, l'app se comporte comme si on était à cette date. Partagé (forcets).
-function getForceTs(){ var v=parseInt(localStorage.getItem('forcets')||'0',10); return isNaN(v)?0:v; }
-function _effNow(){ return new Date(Math.max(Date.now(), getForceTs())); }
+function getForceTs(){ return 0; } // option "semaine forcée" supprimée
+function _effNow(){ return new Date(); }
 function _effWeekNum(){ return _isoWeek(_effNow()); }
 function weekForced(){ return getForceTs() > Date.now(); }
 function curWeekId(){ return isoWeekId(_effNow()); }
@@ -906,15 +906,7 @@ function revertWeek(){
   // (identique au lundi). Restaurer écraserait le travail fait depuis.
   renderWeekBtn(); g("top-date").textContent=getMondayLabel(); buildPills(); renderCard(gIdx); loadMondayData();
 }
-function renderWeekBtn(){
-  var el=g("week-btn"); if(!el) return;
-  if(weekForced()){
-    el.innerHTML='<span style="font-size:12px;color:#fbbf24;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);padding:6px 10px;border-radius:8px;font-weight:600">⏩ Semaine S'+_effWeekNum()+' (forcée)</span>'
-      +'<button onclick="revertWeek()" style="margin-left:6px;font-size:13px;font-weight:600;color:#94a3b8;border:1px solid #334155;padding:6px 12px;border-radius:8px;background:#1e293b;cursor:pointer">↩ Revenir</button>';
-  } else {
-    el.innerHTML='<button onclick="advanceWeek()" title="Passer à la semaine suivante (préparer la réunion avant lundi)" style="font-size:13px;font-weight:600;color:#cbd5e1;border:1px solid #334155;padding:6px 12px;border-radius:8px;background:#1e293b;cursor:pointer">⏭ Semaine suivante</button>';
-  }
-}
+function renderWeekBtn(){ var el=g("week-btn"); if(el) el.innerHTML=""; } // option "semaine forcée" supprimée
 
 // OBJECTIVES MODAL
 function openObj(uid) {
@@ -1799,6 +1791,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v34</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v35</div>
 </body>
 </html>
