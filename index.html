@@ -349,23 +349,24 @@ var DATA_SUMMARY = [
   {name:"Camille Bourgeois",uid:"85643",nbJob:8,nbProcess:4,ulScore:10,firstItw:1,meeting:0,callNA:38,callAb:6,deals:0,ca:0,sem:23,ulHistory:[7.7,8.1,9.7,9.3,7.4,8.3,8.6,8.2,7.8,8.3,9.6,7.6,9.3,9.1,7.9,8.9,9.9,9.7,8.4,11.3,10.8,11.4],team:"Lyon"},
   {name:"Cyprien Bernard",uid:"90160",nbJob:5,nbProcess:8,ulScore:9,firstItw:2,meeting:1,callNA:40,callAb:3,deals:0,ca:0,sem:23,ulHistory:[5.8,6.4,5.8,8.1,6.7,6.4,7.3,8.9,8.7,7.1,6.9,9.3,8.4,8.8,7.1,7.1,9.1,8.4,7.4,10.1,9.3,9.9],team:"Bordeaux"},
   {name:"Louane Cohard",uid:"120903",nbJob:0,nbProcess:0,ulScore:0,firstItw:0,meeting:0,callNA:57,callAb:12,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Lyon"},
-  {name:"Maissa Benneouala",uid:"120906",nbJob:4,nbProcess:1,ulScore:0,firstItw:0,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Briks"},
   {name:"Achille Gosselain",uid:"125984",nbJob:7,nbProcess:8,ulScore:6.5,firstItw:1,meeting:0,callNA:40,callAb:15,deals:0,ca:0,sem:23,ulHistory:[3.8,6.1,3.8,6.3,5.1,4.9,5.6,6.8,4.9,4.5,5.8,5.0,4.7,4.9,4.7,5.2,5.6,5.6,7.1,5.7,6.4,5.5],team:"Paris"}
 ];
 
+// Anciens collaborateurs : ignorés même s'ils restent présents dans le Google Sheet
+function isExcludedConsultant(n){ return /^ma[iï]ssa/i.test((n||'').trim()); }
 var classements_annuels = [
   ["ADEM", 134960, 10], ["HUGO", 113620, 8], ["CO", 109652, 9], ["AYANN", 98821, 9],
   ["BASILE", 87025, 6], ["KIM-SIAN", 62750, 5], ["BO", 59500, 3], ["MIKA", 59200, 5],
   ["BAPTISTE", 58630, 5], ["CAMILLE", 58010, 5], ["MARTIN", 56950, 6], ["MOLKA", 56820, 5],
   ["MAXIME", 51200, 5], ["GAUTIER", 37350, 3], ["PIERRE C.", 21220, 2], ["ACHILLE", 19140, 2],
-  ["CHARLIE", 0, 0], ["AURELIE", 0, 0], ["CYPRIEN", 0, 0], ["LOUANE", 0, 0], ["MAISSA", 0, 0]
+  ["CHARLIE", 0, 0], ["AURELIE", 0, 0], ["CYPRIEN", 0, 0], ["LOUANE", 0, 0]
 ];
 
 var classements_mensuels = [
   ["GAUTIER", 11600, 1], ["BASILE", 11000, 1], ["ADEM", 6000, 0], ["BO", 0, 0], ["CHARLIE", 0, 0],
   ["KIM-SIAN", 0, 0], ["PIERRE C.", 0, 0], ["MARTIN", 0, 0], ["CO", 0, 0], ["MOLKA", 0, 0],
   ["AYANN", 0, 0], ["MIKA", 0, 0], ["MAXIME", 0, 0], ["HUGO", 0, 0], ["CAMILLE", 0, 0],
-  ["BAPTISTE", 0, 0], ["MICHAEL", 0, 0], ["CYPRIENNE", 0, 0], ["LOUANE", 0, 0], ["MAISSA", 0, 0]
+  ["BAPTISTE", 0, 0], ["MICHAEL", 0, 0], ["CYPRIENNE", 0, 0], ["LOUANE", 0, 0]
 ];
 
 var ul_scores = [
@@ -379,7 +380,7 @@ var consultant_ids = {
   "ADEM": "52349", "AYANN": "52276", "BASILE": "52269", "BO": "48771", "BAPTISTE": "75012",
   "CAMILLE": "85643", "CHARLIE": "48771", "CO": "52257", "CYPRIENNE": "90160", "GAUTIER": "52237",
   "HUGO": "52339", "KIM-SIAN": "49038", "MARTIN": "52245", "MAXIME": "52319", "MICHAEL": "52285",
-  "MIKA": "52272", "MOLKA": "52272", "PIERRE C.": "52244", "LOUANE": "120903", "MAISSA": "120906",
+  "MIKA": "52272", "MOLKA": "52272", "PIERRE C.": "52244", "LOUANE": "120903",
   "CYPRIEN": "90160"
 };
 
@@ -454,7 +455,7 @@ function buildEvo(rows){
     });
   }
   EVO_ALL = all;
-  EVO_ROWS = all.filter(function(r){ return r.uid !== '48693' && !/^aur[ée]lie$/i.test(r.name); });
+  EVO_ROWS = all.filter(function(r){ return r.uid !== '48693' && r.uid !== '120906' && !/^aur[ée]lie$/i.test(r.name) && !isExcludedConsultant(r.name); });
   renderEvo();
 }
 
@@ -917,7 +918,7 @@ function renderRanking(data, containerTop3Id, containerTableId) {
 function renderProduction(tab) {
   tab = tab || 'semaine';
   // Noms exclus des colonnes prod
-  var PROD_EXCLUDE = { 'BO': 1, 'AURELIE': 1 };
+  var PROD_EXCLUDE = { 'BO': 1, 'AURELIE': 1, 'MAISSA': 1 };
   // Colonnes : UL Score Semaine, UL Score Mois (dashboard) + Process en cours (Sheet résumé).
   var data = ul_scores.filter(function(r){ return !PROD_EXCLUDE[(r[0] || '').trim().toUpperCase()]; }).map(function(r){
     var uid = consultant_ids[r[0]];
@@ -1000,6 +1001,7 @@ function rebuildFromCSV(rows) {
   for (var r = hdr+1; r < rows.length; r++) {
     var name = cell(rows, r, 2);
     if (!name || !/^\d+$/.test(cell(rows, r, 1))) continue;
+    if (isExcludedConsultant(name)) continue;
     annual.push([name, parseEuro(cell(rows, r, 4)), parseEuro(cell(rows, r, 6))]);
   }
 
@@ -1009,6 +1011,7 @@ function rebuildFromCSV(rows) {
   for (var r = hdr+1; r < rows.length; r++) {
     var name = cell(rows, r, 9);
     if (!name || !/^\d+$/.test(cell(rows, r, 8))) continue;
+    if (isExcludedConsultant(name)) continue;
     monthly.push([name, parseEuro(cell(rows, r, 11)), parseEuro(cell(rows, r, 13))]);
   }
 

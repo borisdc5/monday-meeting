@@ -248,6 +248,9 @@ function _syncInit(onReady){
 }
 
 // DATA
+// Consultants exclus de l'app (anciens collaborateurs, comptes techniques).
+// Ils sont ignorés même s'ils restent présents dans le Google Sheet.
+var EXCLUDED_UIDS = { "48693":1 /* Boris DC */, "120906":1 /* Maissa Benneouala */ };
 var DATA_SUMMARY = [
   {name:"Charlie Billebeau",uid:"48771",nbJob:4,nbProcess:5,ulScore:5,firstItw:0,meeting:0,callNA:2,callAb:3,deals:0,ca:0,sem:23,ulHistory:[7.5,6.8,8.2,6.3,7.5,6.9,5.8,7.0,5.5,6.5,5.3,5.2,6.1,7.1,4.9,5.0,6.1,6.9,5.7,5.0,6.6,3.6],team:"Lyon"},
   {name:"Kim-Sian LIM",uid:"49038",nbJob:12,nbProcess:8,ulScore:10,firstItw:1,meeting:1,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[8.1,6.5,6.2,6.3,7.0,8.7,6.9,8.2,8.6,7.9,8.6,7.3,7.4,8.0,9.5,8.9,8.7,9.7,9.4,9.1,10.7,10.6],team:"Paris"},
@@ -266,7 +269,6 @@ var DATA_SUMMARY = [
   {name:"Camille Bourgeois",uid:"85643",nbJob:8,nbProcess:4,ulScore:10,firstItw:1,meeting:0,callNA:38,callAb:6,deals:0,ca:0,sem:23,ulHistory:[7.7,8.1,9.7,9.3,7.4,8.3,8.6,8.2,7.8,8.3,9.6,7.6,9.3,9.1,7.9,8.9,9.9,9.7,8.4,11.3,10.8,11.4],team:"Lyon"},
   {name:"Cyprien Bernard",uid:"90160",nbJob:5,nbProcess:8,ulScore:9,firstItw:2,meeting:1,callNA:40,callAb:3,deals:0,ca:0,sem:23,ulHistory:[5.8,6.4,5.8,8.1,6.7,6.4,7.3,8.9,8.7,7.1,6.9,9.3,8.4,8.8,7.1,7.1,9.1,8.4,7.4,10.1,9.3,9.9],team:"Bordeaux"},
   {name:"Louane Cohard",uid:"120903",nbJob:0,nbProcess:0,ulScore:0,firstItw:0,meeting:0,callNA:57,callAb:12,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Lyon"},
-  {name:"Maissa Benneouala",uid:"120906",nbJob:4,nbProcess:1,ulScore:0,firstItw:0,meeting:0,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],team:"Briks"},
   {name:"Achille Gosselain",uid:"125984",nbJob:7,nbProcess:8,ulScore:6.5,firstItw:1,meeting:0,callNA:40,callAb:15,deals:0,ca:0,sem:23,ulHistory:[3.8,6.1,3.8,6.3,5.1,4.9,5.6,6.8,4.9,4.5,5.8,5.0,4.7,4.9,4.7,5.2,5.6,5.6,7.1,5.7,6.4,5.5],team:"Paris"}
 ];
 
@@ -336,7 +338,6 @@ var DATA_JOBS = [
   {uid:"49038",job:"Senior Embedded Software Engineer",client:"HyLight",slug:"17768490162310049038bRu"},
   {uid:"52276",job:"Data Engineer IA - Renaissance",client:"RENAISSANCE",slug:"17756629750760052276jBl"},
   {uid:"52276",job:"CTO - Jus Mundi",client:"Jus Mundi",slug:"17756432230760052276XJE"},
-  {uid:"120906",job:"Responsable Production",client:"Groupe Gohard",slug:"17731396326360120906NZp"},
   {uid:"52272",job:"Tech Lead Java Angular",client:"CBTW",slug:"17760942844820052272QhV"},
   {uid:"52237",job:"Ingénieur Commercial Edisys (BTP)",client:"INTESCIA GROUP",slug:"17532582675630052237GIO"},
   {uid:"48771",job:"Ingénieur Avant Vente Cloud",client:"Unitel Group",slug:"17742804908750048771UZP"},
@@ -471,7 +472,6 @@ var DATA_ITW = [
   {uid:"52276",slug:"17756629750760052276jBl",candidat:"Louis GUO",stage:"3rd ITW"},
   {uid:"52276",slug:"17756629750760052276jBl",candidat:"Frederic WANG",stage:"3rd ITW"},
   {uid:"52276",slug:"17756432230760052276XJE",candidat:"Yann STADNICKI",stage:"5th ITW"},
-  {uid:"120906",slug:"17731396326360120906NZp",candidat:"Anne-Charlotte Gallaud",stage:"Final ITW"},
   {uid:"52272",slug:"17760942844820052272QhV",candidat:"David Borrat",stage:"2nd ITW"},
   {uid:"52237",slug:"17532582675630052237GIO",candidat:"Ibrahima Camara",stage:"1st ITW"},
   {uid:"48771",slug:"17742804908750048771UZP",candidat:"Anthony Pedraja",stage:"Final ITW"},
@@ -558,8 +558,7 @@ var UL_HISTORY_SEED = {
   "52269":[0,18,11.5,7,12,16,14.5,18,39.5,38,41.5,27.5,17.5,15,18.5,23,20.5,0,21.5,14,26,12,27],
   "90160":[0,18,4,9,14,11,18.5,2,14,11.5,21.5,11.5,13,13.5,17,19.5,17,0,9.5,3,10.5,11,9],
   "52319":[0,10,2.5,10.5,0,15,12,14.5,10,10.5,15,8,13.5,0,0,5,12,0,11,7.5,0,14,10],
-  "52244":[0,11,7.5,24,6.5,9,16.5,10.5,7.5,6.5,10,13,15.5,6.5,5,6,14.5,0,10,10,15,18,10.5],
-  "120906":[0,0,0,2,0,0,0,2,0,2,2,2,7,0,0,1,4,0,1,0,0.5,1,0]
+  "52244":[0,11,7.5,24,6.5,9,16.5,10.5,7.5,6.5,10,13,15.5,6.5,5,6,14.5,0,10,10,15,18,10.5]
 };
 function getUlHist(uid){
   var stored=null;
@@ -1548,7 +1547,7 @@ var MM_URLS = {
 };
 // UL Score Mois (cumul du mois) par uid, lu du dashboard. Mapping nom dashboard -> uid.
 var UL_MOIS = {};
-var DASH_MOIS_MAP = {ADEM:"52349",BASILE:"52269",AYANN:"52276",GAUTIER:"52237",MAXIME:"52319",MARTIN:"52245",HUGO:"52339",CAMILLE:"85643",CHARLIE:"48771",CO:"52257",MOLKA:"52272",BAPTISTE:"75012",CYPRIEN:"90160",ACHILLE:"125984","PIERRE C.":"52244","KIM-SIAN":"49038",MAISSA:"120906",LOUANE:"120903",MICHAEL:"52285"};
+var DASH_MOIS_MAP = {ADEM:"52349",BASILE:"52269",AYANN:"52276",GAUTIER:"52237",MAXIME:"52319",MARTIN:"52245",HUGO:"52339",CAMILLE:"85643",CHARLIE:"48771",CO:"52257",MOLKA:"52272",BAPTISTE:"75012",CYPRIEN:"90160",ACHILLE:"125984","PIERRE C.":"52244","KIM-SIAN":"49038",LOUANE:"120903",MICHAEL:"52285"};
 function buildUlMois(rows){
   var hdr=-1;
   for(var i=0;i<rows.length;i++){ if(rows[i].some(function(c){return (c||"").indexOf("UL SCORE MOIS")>=0;})){ hdr=i; break; } }
@@ -1681,7 +1680,7 @@ function mergeSummary(rows) {
   for (var r = hdr + 1; r < rows.length; r++) {
     var uid = cv(rows[r], 1), name = cv(rows[r], 0);
     if (!uid || !name) continue;
-    if (uid === "48693") continue; // Boris DC exclu
+    if (EXCLUDED_UIDS[uid]) continue; // consultants exclus de l'app
     var c = DATA_SUMMARY.find(function(x){ return x.uid === uid; });
     if (!c) { c = { name: name, uid: uid, ulHistory: [], team: "" }; DATA_SUMMARY.push(c); }
     c.name      = name;
@@ -1830,6 +1829,6 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){closeTeam();closeObj();closeRecap();}
 });
 </script>
-<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v37</div>
+<div id="app-version" style="position:fixed;right:8px;bottom:6px;font-size:10px;color:#475569;z-index:9999;pointer-events:none">v38</div>
 </body>
 </html>
