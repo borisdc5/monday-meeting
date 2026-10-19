@@ -331,6 +331,9 @@ body.ro .ro-hide { display: none !important; }
 
 <script>
 // DATA
+// Consultants connus via le Sheet live (uid -> nom). Complète la liste ci-dessous,
+// pour que les nouvelles recrues soient prises en compte sans modif de code.
+var CONSULTANT_INFO = {};
 var DATA_SUMMARY = [
   {name:"Charlie Billebeau",uid:"48771",nbJob:4,nbProcess:5,ulScore:5,firstItw:0,meeting:0,callNA:2,callAb:3,deals:0,ca:0,sem:23,ulHistory:[7.5,6.8,8.2,6.3,7.5,6.9,5.8,7.0,5.5,6.5,5.3,5.2,6.1,7.1,4.9,5.0,6.1,6.9,5.7,5.0,6.6,3.6],team:"Lyon"},
   {name:"Kim-Sian LIM",uid:"49038",nbJob:12,nbProcess:8,ulScore:10,firstItw:1,meeting:1,callNA:0,callAb:0,deals:0,ca:0,sem:23,ulHistory:[8.1,6.5,6.2,6.3,7.0,8.7,6.9,8.2,8.6,7.9,8.6,7.3,7.4,8.0,9.5,8.9,8.7,9.7,9.4,9.1,10.7,10.6],team:"Paris"},
@@ -764,24 +767,43 @@ function togglePotFilter(key) {
 }
 function collectPotentiels() {
   var rows = [];
-  for(var i=0;i<DATA_SUMMARY.length;i++){
-    var c = DATA_SUMMARY[i];
-    var raw;
-    try { raw = localStorage.getItem('fcastentries_' + c.uid); } catch(e) { raw = null; }
-    if(!raw) continue;
+  // Index nom/équipe : liste locale + consultants découverts dans le Sheet live
+  var info = {};
+  for(var i=0;i<DATA_SUMMARY.length;i++){ var s=DATA_SUMMARY[i]; info[s.uid] = {name:s.name, team:s.team||''}; }
+  Object.keys(CONSULTANT_INFO).forEach(function(u){
+    if(!info[u]) info[u] = {name: CONSULTANT_INFO[u], team:''};
+    else if(CONSULTANT_INFO[u]) info[u].name = CONSULTANT_INFO[u];
+  });
+  // On parcourt TOUTES les clés de potentiels (plus de liste figée) : les nouvelles
+  // recrues (Romain T, Benjamin…) remontent ainsi automatiquement dans le global.
+  var keys = [];
+  try {
+    for(var k=0;k<localStorage.length;k++){
+      var kk = localStorage.key(k);
+      if(kk && kk.indexOf('fcastentries_') === 0) keys.push(kk);
+    }
+  } catch(e) {}
+  keys.forEach(function(key){
+    var uid = key.slice(13);
+    if(uid === '48693' || uid === '120906') return; // exclus de l'app
+    var meta = info[uid] || {name:'', team:''};
+    if(isExcludedConsultant(meta.name)) return;
     var entries;
-    try { entries = JSON.parse(raw); } catch(e) { continue; }
-    if(!entries || !entries.length) continue;
+    try { entries = JSON.parse(localStorage.getItem(key)); } catch(e) { return; }
+    if(!entries || !entries.length) return;
+    var team = meta.team;
+    try { team = localStorage.getItem('team_' + uid) || team || ''; } catch(e) {}
+    var nom = meta.name || ('#' + uid);
     entries.forEach(function(e, ei){
       var ca = Number(e.ca)||0, pct = Number(e.pct)||0;
       rows.push({
-        team: c.team, consultant: c.name, uid: c.uid,
+        team: team, consultant: nom, uid: uid,
         candidat: e.candidat || '—', company: e.company || '',
         ca: ca, pct: pct, pond: ca * pct / 100,
-        key: c.uid + '|' + ei + '|' + (e.candidat || '')
+        key: uid + '|' + ei + '|' + (e.candidat || '')
       });
     });
-  }
+  });
   return rows;
 }
 var POT_ROWS = [];
@@ -1070,6 +1092,9 @@ function rebuildProcess(rows) {
     if (!/^\d+$/.test(uid)) continue;
     var n = parseInt((cell(rows, r, 5) || '').replace(/[^0-9]/g, ''), 10);
     counts[uid] = isNaN(n) ? 0 : n;
+    // mémorise le nom : permet aux nouvelles recrues d'apparaître dans les Potentiels
+    var nm = cell(rows, r, 0);
+    if (nm && uid !== '48693' && uid !== '120906' && !isExcludedConsultant(nm)) CONSULTANT_INFO[uid] = nm;
   }
   if (Object.keys(counts).length) process_count = counts;
 }
