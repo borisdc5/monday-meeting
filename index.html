@@ -383,7 +383,7 @@ var consultant_ids = {
   "ADEM": "52349", "AYANN": "52276", "BASILE": "52269", "BO": "48771", "BAPTISTE": "75012",
   "CAMILLE": "85643", "CHARLIE": "48771", "CO": "52257", "CYPRIENNE": "90160", "GAUTIER": "52237",
   "HUGO": "52339", "KIM-SIAN": "49038", "MARTIN": "52245", "MAXIME": "52319", "MICHAEL": "52285",
-  "MIKA": "52272", "MOLKA": "52272", "PIERRE C.": "52244", "LOUANE": "120903",
+  "MOLKA": "52272", "PIERRE C.": "52244", "LOUANE": "120903",
   "CYPRIEN": "90160"
 };
 
@@ -922,7 +922,10 @@ function renderRanking(data, containerTop3Id, containerTableId) {
     var deals = data[i][2];
     var rank = i + 1;
     var badgeClass = rank === 1 ? 'rank1' : rank === 2 ? 'rank2' : 'rank3';
-    html += '<div class="consultant-top3"><div class="consultant-photo" style="background-image:url(' + getPhotoUrl(name) + ')"><div class="rank-badge ' + badgeClass + '">' + rank + '</div></div><div class="consultant-name">' + name + '</div><div class="consultant-ca">' + ca.toLocaleString() + ' €</div><div class="consultant-deals">' + deals + ' deals</div></div>';
+    // Pas de photo connue -> repli sur les initiales (évite d'afficher le visage de quelqu'un d'autre)
+    var photo = getPhotoUrl(name);
+    var initials = photo ? '' : '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2rem;color:#fff;opacity:.85">' + (name || '').trim().slice(0, 2).toUpperCase() + '</span>';
+    html += '<div class="consultant-top3"><div class="consultant-photo" style="' + (photo ? 'background-image:url(' + photo + ')' : 'background:linear-gradient(135deg,#6366f1,#8b5cf6)') + '">' + initials + '<div class="rank-badge ' + badgeClass + '">' + rank + '</div></div><div class="consultant-name">' + name + '</div><div class="consultant-ca">' + ca.toLocaleString() + ' €</div><div class="consultant-deals">' + deals + ' deals</div></div>';
   }
   document.getElementById(containerTop3Id).innerHTML = html;
 
